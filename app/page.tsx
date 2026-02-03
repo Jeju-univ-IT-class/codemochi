@@ -94,10 +94,10 @@ interface MozziState {
 
 const MOZZI_STATES: Record<number, MozziState> = {
   1: { label: '모찌가 부드러워요', color: '#D1FAE5', bg: 'bg-emerald-50/80', border: 'border-emerald-100', textColor: 'text-emerald-600', level: 1, desc: '아주 쾌적하고 여유로워요!' },
-  2: { label: '모찌가 구워지고 있어요', color: '#BBF7D0', bg: 'bg-green-50/80', border: 'border-green-100', textColor: 'text-green-600', level: 2, desc: '기분 좋게 한산한 상태입니다.' },
-  3: { label: '노릇노릇한 모찌네요', color: '#FDE047', bg: 'bg-yellow-50/80', border: 'border-yellow-200', textColor: 'text-yellow-700', level: 3, desc: '사람들이 적당히 활기차요.' },
-  4: { label: '단단한 모찌가 되었어요', color: '#F59E0B', bg: 'bg-orange-50/80', border: 'border-orange-200', textColor: 'text-orange-700', level: 4, desc: '북적북적! 조금씩 붐비고 있어요.' },
-  5: { label: '모찌가 탔어요', color: '#EF4444', bg: 'bg-red-50/80', border: 'border-red-200', textColor: 'text-red-700', level: 5, desc: '사람이 너무 많아요! 다른 곳은 어때요?' },
+  2: { label: '모찌가 말랑해요', color: '#BBF7D0', bg: 'bg-green-50/80', border: 'border-green-100', textColor: 'text-green-600', level: 2, desc: '기분 좋게 한산한 상태입니다.' },
+  3: { label: '모찌가 구워지고 있어요', color: '#FDE047', bg: 'bg-yellow-50/80', border: 'border-yellow-200', textColor: 'text-yellow-700', level: 3, desc: '사람들이 적당히 활기차요.' },
+  4: { label: '모찌가 익고 있어요', color: '#F59E0B', bg: 'bg-orange-50/80', border: 'border-orange-200', textColor: 'text-orange-700', level: 4, desc: '북적북적! 조금씩 붐비고 있어요.' },
+  5: { label: '모찌가 타고 있어요', color: '#EF4444', bg: 'bg-red-50/80', border: 'border-red-200', textColor: 'text-red-700', level: 5, desc: '사람이 너무 많아요! 다른 곳은 어때요?' },
 };
 
 interface ParkingState {
@@ -116,11 +116,16 @@ const PARKING_STATES: Record<number, ParkingState> = {
 interface Location {
   id: string;
   name: string;
-  lat: number;
-  lng: number;
+  latitude: number;  // lat 대신 latitude로 되어 있으므로 함께 수정
+  longitude: number; // lng 대신 longitude로 되어 있으므로 함께 수정
   userScore?: number;
   parkingScore?: number;
   dist?: string;
+  // 아래 두 줄을 추가합니다
+  crowd_sum?: number; 
+  crowd_count?: number;
+  parking_sum?: number;   
+  parking_count?: number;
 }
 
 interface Report {
@@ -153,6 +158,40 @@ export default function App() {
     return locations.find(l => l.id === selectedId) || locations[0] || null;
   }, [locations, selectedId]);
 
+  // App 컴포넌트 내 최상단 배치
+const fetchLocationsAndReports = async () => {
+  // 1. 최신 장소 데이터 가져오기
+  const { data: locationsData, error: locError } = await supabase
+    .from('locations')
+    .select('*');
+
+  if (locError) {
+    console.error('데이터 로딩 실패:', locError);
+    return;
+  }
+
+  // 2. 점수 계산 (혼잡도와 주차를 확실히 분리!)
+  const locsWithScores = locationsData.map(loc => {
+    // [혼잡도 계산] crowd_sum과 crowd_count 사용
+    const avgCrowd = loc.crowd_count && loc.crowd_count > 0 
+      ? loc.crowd_sum / loc.crowd_count 
+      : 1.0;
+
+    // [주차장 계산] parking_sum과 parking_count 사용
+    const avgParking = loc.parking_count && loc.parking_count > 0 
+      ? loc.parking_sum / loc.parking_count 
+      : 1.0;
+
+    return {
+      ...loc,
+      userScore: avgCrowd,      // 혼잡도 모찌용
+      parkingScore: avgParking, // 주차장 모찌/숫자용
+    };
+  });
+
+  setLocations(locsWithScores);
+};
+
   // 인증 초기화
   useEffect(() => {
     const checkAuth = async () => {
@@ -178,49 +217,6 @@ export default function App() {
 
   // 장소 및 리포트 데이터 실시간 구독
   useEffect(() => {
-    const fetchLocationsAndReports = async () => {
-      // 장소 데이터 가져오기
-      const { data: locationsData, error: locError } = await supabase
-        .from('locations')
-        .select('*');
-
-      if (locError) {
-        console.error('장소 로딩 실패:', locError);
-        return;
-      }
-
-      // 리포트 데이터 가져오기
-      const { data: reportsData, error: repError } = await supabase
-        .from('reports')
-        .select('*');
-
-      if (repError) {
-        console.error('리포트 로딩 실패:', repError);
-        return;
-      }
-
-      // 평균 점수 계산
-      const locsWithScores = locationsData.map(loc => {
-        const crowdReports = reportsData.filter(r => r.location_id === loc.id && r.type === 'crowd');
-        const parkingReports = reportsData.filter(r => r.location_id === loc.id && r.type === 'parking');
-        
-        const avgCrowd = crowdReports.length > 0 
-          ? crowdReports.reduce((sum, r) => sum + r.score, 0) / crowdReports.length 
-          : 1.0;
-        
-        const avgParking = parkingReports.length > 0 
-          ? parkingReports.reduce((sum, r) => sum + r.score, 0) / parkingReports.length 
-          : 1.0;
-
-        return {
-          ...loc,
-          userScore: avgCrowd,
-          parkingScore: avgParking,
-        };
-      });
-
-      setLocations(locsWithScores);
-    };
 
     fetchLocationsAndReports();
 
@@ -270,7 +266,7 @@ export default function App() {
         }
 
         const L = (window as any).L;
-        const map = L.map(mapContainerRef.current, { zoomControl: false }).setView([selectedLocation?.lat || 33.39, selectedLocation?.lng || 126.23], 12);
+        const map = L.map(mapContainerRef.current, { zoomControl: false }).setView([selectedLocation?.latitude || 33.39, selectedLocation?.longitude || 126.23], 12);
         mapInstance.current = map;
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
@@ -278,7 +274,7 @@ export default function App() {
         locations.forEach(loc => {
           const score = loc.userScore || 1;
           const state = MOZZI_STATES[Math.round(score)] || MOZZI_STATES[1];
-          L.circleMarker([loc.lat, loc.lng], {
+          L.circleMarker([loc.latitude, loc.longitude], {
             radius: 14, fillColor: state.color, color: '#064E3B', weight: 2, fillOpacity: 0.9
           }).addTo(map).on('click', () => setSelectedId(loc.id));
         });
@@ -297,46 +293,83 @@ export default function App() {
   }, [activeTab, isMapLoaded, locations, selectedLocation]);
 
   const handleRating = async (score: number) => {
-    if (isAnonymous) { 
-      setAuthError("회원가입 후 제보가 가능합니다. 🌿"); 
-      return; 
-    }
-    setUserReported(true);
-    setAuthError("");
-    
-    try {
-      await supabase.from('reports').insert({
-        location_id: selectedLocation.id,
-        type: 'crowd',
-        score
-      });
-    } catch (err) { 
-      console.error("제보 실패:", err); 
-    }
-    
-    setTimeout(() => setUserReported(false), 2000);
-  };
+  if (isAnonymous) { 
+    setAuthError("회원가입 후 제보가 가능합니다. 🌿"); 
+    return; 
+  }
+  setUserReported(true);
+  
+  try {
+    const currentId = selectedLocation.id; // 1. 현재 장소 ID 미리 저장
+
+    // 2. reports 제보 추가 (text 타입 변환 및 제약 조건 준수)
+    await supabase.from('reports').insert({
+      location_id: currentId,
+      congestion_level: score.toString(), 
+      parking_level: "1", // DB 제약 조건(1~5) 통과를 위해 1로 설정
+      comment: ""
+    });
+
+    // 3. locations 합계 업데이트
+    await supabase.from('locations').update({
+      crowd_sum: (selectedLocation.crowd_sum || 0) + score,
+      crowd_count: (selectedLocation.crowd_count || 0) + 1
+    }).eq('id', currentId);
+
+    // 4. 데이터 갱신 후 장소 고정!
+    await fetchLocationsAndReports();
+    setSelectedId(currentId); // ★ 이 줄이 있어야 장소가 안 바뀝니다
+
+  } catch (err) { 
+    console.error("제보 실패:", err); 
+  }
+  
+  setTimeout(() => setUserReported(false), 2000);
+};
 
   const handleParkingRating = async (score: number) => {
-    if (isAnonymous) { 
-      setAuthError("회원가입 후 주차 제보가 가능합니다. 🚗"); 
-      return; 
+  if (isAnonymous) { 
+    setAuthError("회원가입 후 주차 제보가 가능합니다. 🚗"); 
+    return; 
+  }
+  setParkingReported(true);
+  
+  try {
+    const currentId = selectedLocation.id;
+
+    // 1. reports 테이블에 데이터 추가
+    const { error: reportError } = await supabase.from('reports').insert({
+      location_id: currentId,
+      parking_level: String(score),      // 점수를 문자열로 변환
+      congestion_level: "1",             // 기본값으로 1 설정
+      comment: "주차 제보"                 //
+    });
+
+    if (reportError) {
+      console.error("SQL 명령을 먼저 실행해야 이 에러가 사라집니다!:", reportError.message);
+      throw reportError;
     }
-    setParkingReported(true);
-    setAuthError("");
-    
-    try {
-      await supabase.from('reports').insert({
-        location_id: selectedLocation.id,
-        type: 'parking',
-        score
-      });
-    } catch (err) { 
-      console.error("주차 제보 실패:", err); 
-    }
-    
-    setTimeout(() => setParkingReported(false), 2000);
-  };
+
+    // 2. locations 테이블 실시간 점수 합산 업데이트
+    const { error: updateError } = await supabase
+      .from('locations')
+      .update({
+        parking_sum: (selectedLocation.parking_sum || 0) + score,
+        parking_count: (selectedLocation.parking_count || 0) + 1
+      })
+      .eq('id', currentId);
+
+    if (updateError) throw updateError;
+
+    // 3. 화면 데이터 즉시 갱신
+    await fetchLocationsAndReports();
+
+  } catch (err) { 
+    console.error("주차 제보 최종 실패:", err); 
+  }
+  
+  setTimeout(() => setParkingReported(false), 2000);
+};
 
   const handleAddPlace = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -348,9 +381,16 @@ export default function App() {
         .from('locations')
         .insert({
           name: newPlace.name,
-          lat: parseFloat(newPlace.lat),
-          lng: parseFloat(newPlace.lng),
-          dist: 'N/A'
+          latitude: parseFloat(newPlace.lat),
+          longitude: parseFloat(newPlace.lng),
+          dist: 'N/A',
+          address: '',
+          category: '관광',
+          crowd_sum: 0,
+          crowd_count: 0,
+          parking_sum: 0,
+          parking_count: 0
+          
         })
         .select()
         .single();

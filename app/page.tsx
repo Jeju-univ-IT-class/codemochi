@@ -94,10 +94,10 @@ interface MozziState {
 
 const MOZZI_STATES: Record<number, MozziState> = {
   1: { label: '모찌가 부드러워요', color: '#D1FAE5', bg: 'bg-emerald-50/80', border: 'border-emerald-100', textColor: 'text-emerald-600', level: 1, desc: '아주 쾌적하고 여유로워요!' },
-  2: { label: '모찌가 구워지고 있어요', color: '#BBF7D0', bg: 'bg-green-50/80', border: 'border-green-100', textColor: 'text-green-600', level: 2, desc: '기분 좋게 한산한 상태입니다.' },
-  3: { label: '노릇노릇한 모찌네요', color: '#FDE047', bg: 'bg-yellow-50/80', border: 'border-yellow-200', textColor: 'text-yellow-700', level: 3, desc: '사람들이 적당히 활기차요.' },
-  4: { label: '단단한 모찌가 되었어요', color: '#F59E0B', bg: 'bg-orange-50/80', border: 'border-orange-200', textColor: 'text-orange-700', level: 4, desc: '북적북적! 조금씩 붐비고 있어요.' },
-  5: { label: '모찌가 탔어요', color: '#EF4444', bg: 'bg-red-50/80', border: 'border-red-200', textColor: 'text-red-700', level: 5, desc: '사람이 너무 많아요! 다른 곳은 어때요?' },
+  2: { label: '모찌가 말랑해요', color: '#BBF7D0', bg: 'bg-green-50/80', border: 'border-green-100', textColor: 'text-green-600', level: 2, desc: '기분 좋게 한산한 상태입니다.' },
+  3: { label: '모찌가 구워지고 있어요', color: '#FDE047', bg: 'bg-yellow-50/80', border: 'border-yellow-200', textColor: 'text-yellow-700', level: 3, desc: '사람들이 적당히 활기차요.' },
+  4: { label: '모찌가 익고 있어요', color: '#F59E0B', bg: 'bg-orange-50/80', border: 'border-orange-200', textColor: 'text-orange-700', level: 4, desc: '북적북적! 조금씩 붐비고 있어요.' },
+  5: { label: '모찌가 타고 있어요', color: '#EF4444', bg: 'bg-red-50/80', border: 'border-red-200', textColor: 'text-red-700', level: 5, desc: '사람이 너무 많아요! 다른 곳은 어때요?' },
 };
 
 interface ParkingState {

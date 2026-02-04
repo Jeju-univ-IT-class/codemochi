@@ -519,6 +519,7 @@ export default function App() {
             </form>
           </div>
         ) : null}
+      </div>
 
       <nav className="bg-white border-t border-gray-100 shrink-0 shadow-2xl z-50">
         <div className="flex justify-around items-center py-3">

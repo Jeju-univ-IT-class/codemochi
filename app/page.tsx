@@ -214,13 +214,13 @@ export default function App() {
   const [newPlace, setNewPlace] = useState({ name: '', lat: '', lng: '' });
   const [isAdding, setIsAdding] = useState(false);
   const [isAnonymous, setIsAnonymous] = useState(true);
-  const [isKakaoLoaded, setIsKakaoLoaded] = useState(false); //
+  const [isKakaoLoaded, setIsKakaoLoaded] = useState(false);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
 
   const selectedLocation = useMemo(() => {
-    return locations.find((l: Location) => l.id === selectedId) || locations[0] || null;
+    return locations.find(l => l.id === selectedId) || locations[0] || null;
   }, [locations, selectedId]);
 
   const fetchLocationsAndReports = async () => {
@@ -237,6 +237,7 @@ export default function App() {
     setLocations(locsWithScores);
   };
 
+  // 인증 초기화
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -253,6 +254,61 @@ export default function App() {
     return () => subscription?.unsubscribe();
   }, []);
 
+  const handleSearchAddress = () => {
+    if (!window.daum || !window.kakao || !window.kakao.maps) {
+      alert("지도 서비스 로딩 중입니다. 잠시만 기다려주세요!");
+      return;
+    }
+
+    new window.daum.Postcode({
+      oncomplete: function(data: any) {
+        const fullAddress = data.address;
+        window.kakao.maps.load(() => {
+          const geocoder = new window.kakao.maps.services.Geocoder();
+          geocoder.addressSearch(fullAddress, (result: any, status: any) => {
+            if (status === window.kakao.maps.services.Status.OK) {
+              setNewPlace((prev: any) => ({
+                ...prev,
+                name: data.buildingName || fullAddress,
+                lat: result[0].y,
+                lng: result[0].x
+              }));
+            } else {
+              alert("좌표를 불러오는 데 실패했습니다.");
+            }
+          });
+        });
+      }
+    }).open();
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (!document.getElementById('daum-postcode')) {
+      const postcodeScript = document.createElement('script');
+      postcodeScript.id = 'daum-postcode';
+      postcodeScript.src = "https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
+      postcodeScript.async = true;
+      document.head.appendChild(postcodeScript);
+    }
+
+    if (!document.getElementById('kakao-maps-sdk')) {
+      const kakaoScript = document.createElement('script');
+      kakaoScript.id = 'kakao-maps-sdk';
+      kakaoScript.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=13e79714db6e931bf4b822cb209c27a5&libraries=services&autoload=false`;
+      kakaoScript.async = true;
+      kakaoScript.onload = () => {
+        window.kakao.maps.load(() => {
+          console.log('✅ 카카오 맵 서비스 로드 완료');
+          setIsKakaoLoaded(true);
+        });
+      };
+      document.head.appendChild(kakaoScript);
+    }
+  }, []);
+
+  // 장소 및 리포트 데이터 실시간 구독
   useEffect(() => {
     fetchLocationsAndReports();
     const locationsChannel = supabase.channel('locations-changes')
@@ -265,81 +321,173 @@ export default function App() {
   useEffect(() => {
     if (activeTab === 'map') {
       if (!document.getElementById('leaflet-css')) {
-        const link = document.createElement('link'); link.id = 'leaflet-css'; link.rel = 'stylesheet'; link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(link);
+        const link = document.createElement('link');
+        link.id = 'leaflet-css';
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(link);
       }
       if (!document.getElementById('leaflet-js')) {
-        const script = document.createElement('script'); script.id = 'leaflet-js'; script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; script.onload = () => setIsMapLoaded(true); document.head.appendChild(script);
-      } else if (typeof window !== 'undefined' && (window as any).L) { setIsMapLoaded(true); }
+        const script = document.createElement('script');
+        script.id = 'leaflet-js';
+        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        script.onload = () => setIsMapLoaded(true);
+        document.head.appendChild(script);
+      } else if (typeof window !== 'undefined' && (window as any).L) {
+        setIsMapLoaded(true);
+      }
     }
   }, [activeTab]);
 
+  const initMap = React.useCallback(() => {
+    if (!mapContainerRef.current || !(window as any).L || !selectedLocation) return;
+
+    if (mapInstance.current) {
+      mapInstance.current.remove();
+      mapInstance.current = null;
+    }
+
+    const L = (window as any).L;
+    const map = L.map(mapContainerRef.current, { zoomControl: false })
+      .setView([selectedLocation.latitude || 33.39, selectedLocation.longitude || 126.23], 12);
+
+    mapInstance.current = map;
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    locations.forEach((loc: Location) => {
+      const score = loc.userScore || 1;
+      const state = MOZZI_STATES[Math.round(score)] || MOZZI_STATES[1];
+      L.circleMarker([loc.latitude, loc.longitude], {
+        radius: 14,
+        fillColor: state.color,
+        color: '#064E3B',
+        weight: 2,
+        fillOpacity: 0.9
+      }).addTo(map).on('click', () => {
+        setSelectedId(loc.id);
+      });
+    });
+
+    setTimeout(() => map.invalidateSize(), 200);
+  }, [isMapLoaded, locations, selectedLocation]);
+
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (activeTab === 'map' && isMapLoaded && mapContainerRef.current) {
-      const initMap = () => {
-        if (typeof window === 'undefined' || !(window as any).L || !mapContainerRef.current) return;
-        if (mapInstance.current) { mapInstance.current.remove(); mapInstance.current = null; }
-        const L = (window as any).L;
-        const map = L.map(mapContainerRef.current, { zoomControl: false }).setView([selectedLocation?.latitude || 33.39, selectedLocation?.longitude || 126.23], 12);
-        mapInstance.current = map;
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        locations.forEach((loc: Location) => {
-          const score = loc.userScore || 1;
-          const state = MOZZI_STATES[Math.round(score)] || MOZZI_STATES[1];
-          L.circleMarker([loc.latitude, loc.longitude], { radius: 14, fillColor: state.color, color: '#064E3B', weight: 2, fillOpacity: 0.9 }).addTo(map).on('click', () => setSelectedId(loc.id));
-        });
-        setTimeout(() => map.invalidateSize(), 200);
-      };
+    if (activeTab === 'map' && isMapLoaded) {
       timer = setTimeout(initMap, 100);
     }
-    return () => { clearTimeout(timer); if (mapInstance.current) { mapInstance.current.remove(); mapInstance.current = null; } };
-  }, [activeTab, isMapLoaded, locations, selectedLocation]);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [activeTab, isMapLoaded, initMap]);
 
   const handleRating = async (score: number) => {
-    if (isAnonymous) { setAuthError("회원가입 후 제보가 가능합니다. 🌿"); return; }
+    if (isAnonymous) {
+      setAuthError("회원가입 후 제보가 가능합니다. 🌿");
+      return;
+    }
+    if (!selectedLocation) return;
     setUserReported(true);
     try {
       const currentId = selectedLocation.id;
-      await supabase.from('reports').insert({ location_id: currentId, congestion_level: score.toString(), parking_level: "1", comment: "" });
-      await supabase.from('locations').update({ crowd_sum: (selectedLocation.crowd_sum || 0) + score, crowd_count: (selectedLocation.crowd_count || 0) + 1 }).eq('id', currentId);
-      await fetchLocationsAndReports(); setSelectedId(currentId);
-    } catch (err) { console.error("제보 실패:", err); }
+      await supabase.from('reports').insert({
+        location_id: currentId,
+        congestion_level: score.toString(),
+        parking_level: "1",
+        comment: ""
+      });
+      await supabase.from('locations').update({
+        crowd_sum: (selectedLocation.crowd_sum || 0) + score,
+        crowd_count: (selectedLocation.crowd_count || 0) + 1
+      }).eq('id', currentId);
+      await fetchLocationsAndReports();
+      setSelectedId(currentId);
+    } catch (err) {
+      console.error("제보 실패:", err);
+    }
     setTimeout(() => setUserReported(false), 2000);
   };
 
   const handleParkingRating = async (score: number) => {
-    if (isAnonymous) { setAuthError("회원가입 후 주차 제보가 가능합니다. 🚗"); return; }
+    if (isAnonymous) {
+      setAuthError("회원가입 후 주차 제보가 가능합니다. 🚗");
+      return;
+    }
+    if (!selectedLocation) return;
     setParkingReported(true);
     try {
       const currentId = selectedLocation.id;
-      await supabase.from('reports').insert({ location_id: currentId, parking_level: String(score), congestion_level: "1", comment: "주차 제보" });
-      await supabase.from('locations').update({ parking_sum: (selectedLocation.parking_sum || 0) + score, parking_count: (selectedLocation.parking_count || 0) + 1 }).eq('id', currentId);
+      await supabase.from('reports').insert({
+        location_id: currentId,
+        parking_level: String(score),
+        congestion_level: "1",
+        comment: "주차 제보"
+      });
+      await supabase.from('locations').update({
+        parking_sum: (selectedLocation.parking_sum || 0) + score,
+        parking_count: (selectedLocation.parking_count || 0) + 1
+      }).eq('id', currentId);
       await fetchLocationsAndReports();
-    } catch (err) { console.error("주차 제보 최종 실패:", err); }
+    } catch (err) {
+      console.error("주차 제보 실패:", err);
+    }
     setTimeout(() => setParkingReported(false), 2000);
   };
 
   const handleAddPlace = async (e: React.FormEvent) => {
-    e.preventDefault(); if (!newPlace.name || !newPlace.lat || !newPlace.lng) return;
+    e.preventDefault();
+    if (!newPlace.name || !newPlace.lat || !newPlace.lng) return;
     setIsAdding(true);
     try {
-      const { data, error } = await supabase.from('locations').insert({ name: newPlace.name, latitude: parseFloat(newPlace.lat), longitude: parseFloat(newPlace.lng), dist: 'N/A', address: '', category: '관광', crowd_sum: 0, crowd_count: 0, parking_sum: 0, parking_count: 0 }).select().single();
-      if (error) throw error; setNewPlace({ name: '', lat: '', lng: '' }); setSelectedId(data.id); setActiveTab('home');
-    } catch (err) { console.error("장소 추가 실패:", err); } finally { setIsAdding(false); }
+      const { data, error } = await supabase
+        .from('locations')
+        .insert({
+          name: newPlace.name,
+          latitude: parseFloat(newPlace.lat),
+          longitude: parseFloat(newPlace.lng),
+          dist: 'N/A',
+          address: '',
+          category: '관광',
+          crowd_sum: 0,
+          crowd_count: 0,
+          parking_sum: 0,
+          parking_count: 0
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setNewPlace({ name: '', lat: '', lng: '' });
+      setSelectedId(data.id);
+      setActiveTab('home');
+    } catch (err: any) {
+      console.error("장소 추가 실패:", err.message);
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); setAuthError('');
+    e.preventDefault();
+    setAuthError('');
     try {
       if (authView === 'login') {
-        const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) throw error;
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
       } else {
-        const { error } = await supabase.auth.signUp({ email, password }); if (error) throw error; setAuthError('가입 확인 이메일을 보냈습니다!');
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        setAuthError('가입 확인 이메일을 보냈습니다!');
       }
-    } catch (err: any) { setAuthError(err.message || "인증 정보를 확인해주세요."); }
+    } catch (err: any) {
+      setAuthError(err.message || "인증 정보를 확인해주세요.");
+    }
   };
 
-  const handleSignOut = async () => { await supabase.auth.signOut(); };
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+  };
 
   const totalScore = selectedLocation?.userScore || 1;
   const currentMozzi = MOZZI_STATES[Math.round(totalScore)] || MOZZI_STATES[1];
@@ -478,7 +626,7 @@ export default function App() {
 
               <div className="space-y-3">
                 <div className="flex justify-between items-end px-1">
-                  <h3 className="text-sm font-black text-gray-800 tracking-tight flex items-center gap-1"><Car size={14} /> {t('parkingTitle')}</h3>
+                  <h3 className="text-sm font-black text-gray-800 tracking-tight flex items-center gap-1"><Car size={14} className="mr-1" /> {t('parkingTitle')}</h3>
                   {parkingReported && <div className="flex items-center space-x-1 text-[10px] font-bold text-green-600 animate-fadeIn"><Check size={12} /> <span>제보 완료!</span></div>}
                 </div>
                 <div className="grid grid-cols-5 gap-2">
@@ -512,10 +660,45 @@ export default function App() {
           <div className="h-full overflow-y-auto p-6 bg-white">
             <h2 className="text-xl font-black text-gray-800 mb-6">새 장소 추가하기</h2>
             <form onSubmit={handleAddPlace} className="space-y-4">
-              <div><label className="block text-sm font-bold text-gray-700 mb-2">장소 이름</label><input type="text" value={newPlace.name} onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })} className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-green-500 outline-none" placeholder="예: 성산 일출봉" required /></div>
-              <div><label className="block text-sm font-bold text-gray-700 mb-2">위도 (Latitude)</label><input type="number" step="any" value={newPlace.lat} onChange={(e) => setNewPlace({ ...newPlace, lat: e.target.value })} className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-green-500 outline-none" placeholder="33.xxxx" required /></div>
-              <div><label className="block text-sm font-bold text-gray-700 mb-2">경도 (Longitude)</label><input type="number" step="any" value={newPlace.lng} onChange={(e) => setNewPlace({ ...newPlace, lng: e.target.value })} className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-green-500 outline-none" placeholder="126.xxxx" required /></div>
-              <button type="submit" disabled={isAdding} className="w-full bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-green-600/20 active:scale-95 transition-all disabled:opacity-50">{isAdding ? '추가 중...' : '장소 추가'}</button>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">장소 이름</label>
+                <input
+                  type="text"
+                  value={newPlace.name}
+                  onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                  placeholder="예: 성산 일출봉"
+                  required
+                />
+              </div>
+              {/* 600번 라인 근처, 장소 이름 입력창 바로 아래에 삽입 */}
+              <div className="space-y-4">
+                <button 
+                  type="button"
+                  onClick={handleSearchAddress}
+                  className="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                  <Search size={18} /> 주소 검색으로 위치 찾기
+                </button>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <label className="text-[10px] font-black text-gray-400 uppercase">위도(LAT)</label>
+                    <p className="text-sm font-bold text-gray-600">{newPlace.lat || '0.0000'}</p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <label className="text-[10px] font-black text-gray-400 uppercase">경도(LNG)</label>
+                    <p className="text-sm font-bold text-gray-600">{newPlace.lng || '0.0000'}</p>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={isAdding}
+                className="w-full bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-green-600/20 active:scale-95 transition-all disabled:opacity-50"
+              >
+                {isAdding ? '추가 중...' : '장소 추가'}
+              </button>
             </form>
           </div>
         ) : null}

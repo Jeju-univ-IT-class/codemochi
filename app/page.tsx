@@ -4,6 +4,13 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, MapPin, Star, Navigation, Wind, Map as MapIcon, ChevronRight, LogOut, PlusCircle, Check, Car } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
+import { init } from 'next/dist/compiled/webpack/webpack';
+declare global {
+  interface Window {
+    daum: any;
+    kakao: any;
+  }
+}
 
 const supabase = createClient();
 
@@ -150,13 +157,15 @@ export default function App() {
   const [newPlace, setNewPlace] = useState({ name: '', lat: '', lng: '' });
   const [isAdding, setIsAdding] = useState(false);
   const [isAnonymous, setIsAnonymous] = useState(true);
+  const [isKakaoLoaded, setIsKakaoLoaded] = useState(false); //
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
 
   const selectedLocation = useMemo(() => {
     return locations.find(l => l.id === selectedId) || locations[0] || null;
-  }, [locations, selectedId]);
+  }, [locations, selectedId]
+);
 
   // App 컴포넌트 내 최상단 배치
 const fetchLocationsAndReports = async () => {
@@ -168,7 +177,7 @@ const fetchLocationsAndReports = async () => {
   if (locError) {
     console.error('데이터 로딩 실패:', locError);
     return;
-  }
+  };
 
   // 2. 점수 계산 (혼잡도와 주차를 확실히 분리!)
   const locsWithScores = locationsData.map(loc => {
@@ -215,6 +224,76 @@ const fetchLocationsAndReports = async () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    // No-op here; auth init runs above.
+  }, []);
+
+
+
+  const handleSearchAddress = () => {
+  // 1. 서비스 사용 가능한지 체크
+    if (!window.daum || !window.kakao || !window.kakao.maps) {
+      alert("지도 서비스 로딩 중입니다. 잠시만 기다려주세요!");
+      return;
+    }
+
+    new window.daum.Postcode({
+      oncomplete: function(data: any) {
+        const fullAddress = data.address; 
+      
+      // 2. 카카오 맵 SDK가 완전히 로드된 후 Geocoder 사용
+        window.kakao.maps.load(() => {
+          const geocoder = new window.kakao.maps.services.Geocoder();
+        
+          geocoder.addressSearch(fullAddress, (result: any, status: any) => {
+            if (status === window.kakao.maps.services.Status.OK) {
+            // 성공 시 상태 업데이트
+              setNewPlace((prev) => ({
+                ...prev,
+                name: data.buildingName || fullAddress,
+                lat: result[0].y,
+                lng: result[0].x
+              }));
+            } else {
+              alert("좌표를 불러오는 데 실패했습니다.");
+            }
+          });
+        });
+      }
+    }).open();
+  };
+
+  
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+  // 1. 주소 검색(Postcode) 스크립트 로드
+    if (!document.getElementById('daum-postcode')) {
+      const postcodeScript = document.createElement('script');
+      postcodeScript.id = 'daum-postcode';
+      postcodeScript.src = "https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
+      postcodeScript.async = true;
+      document.head.appendChild(postcodeScript);
+    }
+
+  // 2. 카카오 맵 SDK 로드 (자동 로드 끄기)
+    if (!document.getElementById('kakao-maps-sdk')) {
+      const kakaoScript = document.createElement('script');
+      kakaoScript.id = 'kakao-maps-sdk';
+      kakaoScript.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=13e79714db6e931bf4b822cb209c27a5&libraries=services&autoload=false`;
+      kakaoScript.async = true;
+    
+      kakaoScript.onload = () => {
+      // SDK 파일 자체가 로드된 후, 내부 모듈들을 로드함
+        window.kakao.maps.load(() => {
+          console.log('✅ 카카오 맵 서비스 로드 완료');
+          setIsKakaoLoaded(true);
+        });
+      };
+      document.head.appendChild(kakaoScript);
+    }
+  }, []);
+
   // 장소 및 리포트 데이터 실시간 구독
   useEffect(() => {
 
@@ -254,33 +333,41 @@ const fetchLocationsAndReports = async () => {
     }
   }, [activeTab]);
 
+  const initMap = React.useCallback(() => {
+    if (!mapContainerRef.current || !(window as any).L) return;
+
+  // 기존 지도 있으면 삭제
+    if (mapInstance.current) {
+      mapInstance.current.remove();
+      mapInstance.current = null;
+    }
+
+    const L = (window as any).L;
+  // 초기 위치는 고정값이나 현재 위치로 설정
+    const map = L.map(mapContainerRef.current, { zoomControl: false })
+      .setView([selectedLocation?.latitude || 33.39, selectedLocation?.longitude || 126.23], 12);
+  
+    mapInstance.current = map;
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+  // 마커 뿌리기
+    locations.forEach(loc => {
+      const score = loc.userScore || 1;
+      const state = MOZZI_STATES[Math.round(score)] || MOZZI_STATES[1];
+      L.circleMarker([loc.latitude, loc.longitude], {
+        radius: 14, fillColor: state.color, color: '#064E3B', weight: 2, fillOpacity: 0.9
+      }).addTo(map).on('click', () => {
+        setSelectedId(loc.id); // 클릭 시 ID만 변경 (지도는 안 지워짐)
+      });
+    });
+
+    setTimeout(() => map.invalidateSize(), 200);
+  }, [isMapLoaded, locations]); // 여기서 selectedLocation을 빼야 마커 클릭 시 지도가 안 사라짐！
+
   // 지도 렌더링
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (activeTab === 'map' && isMapLoaded && mapContainerRef.current) {
-      const initMap = () => {
-        if (typeof window === 'undefined' || !(window as any).L || !mapContainerRef.current) return;
-        if (mapInstance.current) { 
-          mapInstance.current.remove(); 
-          mapInstance.current = null; 
-        }
-
-        const L = (window as any).L;
-        const map = L.map(mapContainerRef.current, { zoomControl: false }).setView([selectedLocation?.latitude || 33.39, selectedLocation?.longitude || 126.23], 12);
-        mapInstance.current = map;
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-        locations.forEach(loc => {
-          const score = loc.userScore || 1;
-          const state = MOZZI_STATES[Math.round(score)] || MOZZI_STATES[1];
-          L.circleMarker([loc.latitude, loc.longitude], {
-            radius: 14, fillColor: state.color, color: '#064E3B', weight: 2, fillOpacity: 0.9
-          }).addTo(map).on('click', () => setSelectedId(loc.id));
-        });
-        
-        setTimeout(() => map.invalidateSize(), 200);
-      };
+    if (activeTab === 'map' && isMapLoaded) {
       timer = setTimeout(initMap, 100);
     }
     return () => {
@@ -290,7 +377,7 @@ const fetchLocationsAndReports = async () => {
         mapInstance.current = null; 
       }
     };
-  }, [activeTab, isMapLoaded, locations, selectedLocation]);
+  }, [activeTab, isMapLoaded, initMap]);
 
   const handleRating = async (score: number) => {
   if (isAnonymous) { 
@@ -400,8 +487,8 @@ const fetchLocationsAndReports = async () => {
       setNewPlace({ name: '', lat: '', lng: '' });
       setSelectedId(data.id);
       setActiveTab('home');
-    } catch (err) {
-      console.error("장소 추가 실패:", err);
+    } catch (err:any) {
+      console.error("장소 추가 실패 상세:", err.message, err.details, err.hint);
     } finally {
       setIsAdding(false);
     }
@@ -742,6 +829,27 @@ const fetchLocationsAndReports = async () => {
                   placeholder="예: 성산 일출봉"
                   required
                 />
+              </div>
+              {/* 600번 라인 근처, 장소 이름 입력창 바로 아래에 삽입 */}
+              <div className="space-y-4">
+                <button 
+                  type="button"
+                  onClick={handleSearchAddress}
+                  className="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                  <Search size={18} /> 주소 검색으로 위치 찾기
+                </button>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <label className="text-[10px] font-black text-gray-400 uppercase">위도(LAT)</label>
+                    <p className="text-sm font-bold text-gray-600">{newPlace.lat || '0.0000'}</p>
+                  </div>
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                    <label className="text-[10px] font-black text-gray-400 uppercase">경도(LNG)</label>
+                    <p className="text-sm font-bold text-gray-600">{newPlace.lng || '0.0000'}</p>
+                  </div>
+                </div>
               </div>
               <button
                 type="submit"

@@ -643,16 +643,54 @@ export default function App() {
               {authError && <div className="text-center text-xs font-bold text-orange-600 bg-orange-50 border border-orange-200 rounded-2xl py-3 px-4">{authError}</div>}
             </section>
 
+          {/* ✨ 이미지 디자인을 적용한 추천 섹션 */}
             {recommendations.length > 0 && (
-              <section className="space-y-3 px-1">
-                <h3 className="text-sm font-black text-gray-800 tracking-tight flex items-center gap-1"><Star size={14} className="text-yellow-500" /> {t('recommend')}</h3>
-                <div className="space-y-2">
-                  {recommendations.map((rec: Location) => (
-                    <button key={rec.id} onClick={() => setSelectedId(rec.id)} className="w-full bg-white rounded-2xl p-4 border border-gray-100 hover:border-green-200 transition-all flex items-center justify-between group hover:shadow-md">
-                      <div className="flex items-center space-x-3"><MozziCharacter level={rec.userScore || 1} className="w-12 h-12" /><div className="text-left"><p className="font-bold text-sm text-gray-700">{rec.name}</p><p className="text-[10px] text-gray-400 font-medium">{rec.dist}</p></div></div>
-                      <ChevronRight size={16} className="text-gray-300 group-hover:text-green-500 transition-colors" />
-                    </button>
-                  ))}
+              <section className="px-1 mt-6">
+                <div className="bg-[#F0FDF4]/60 rounded-[2.5rem] p-7 border border-[#DCFCE7] relative overflow-hidden">
+                  {/* 상단 타이틀 영역 */}
+                  <div className="flex items-center gap-2.5 mb-5">
+                    <div className="bg-white w-9 h-9 rounded-full flex items-center justify-center shadow-sm border border-emerald-50">
+                      <div className="w-5 h-5 rounded-full border-2 border-[#10B981] flex items-center justify-center text-[10px] font-black text-[#10B981]">i</div>
+                    </div>
+                    <h3 className="text-[17px] font-black text-[#065F46] tracking-tight">모찌 가이드의 추천</h3>
+                  </div>
+
+                  {/* 가이드 문구 */}
+                  <p className="text-[14px] font-bold text-[#059669] leading-relaxed mb-6 px-1 opacity-90">
+                    {selectedLocation?.name}은(는) 지금 아주 쾌적해요! <br/>
+                    다른 여유로운 곳도 확인해보세요.
+                  </p>
+
+                  {/* 추천 리스트 카드 */}
+                  <div className="space-y-3">
+                    {recommendations.map(rec => (
+                      <button
+                        key={rec.id}
+                        onClick={() => setSelectedId(rec.id)}
+                        className="w-full bg-white rounded-[1.8rem] p-4 flex items-center justify-between group shadow-[0_4px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] border border-white"
+                      >
+                        <div className="flex items-center gap-4">
+                          {/* 둥근 사각형 모찌 아이콘 배경 */}
+                          <div className="bg-[#F8FAFC] rounded-2xl p-2 w-14 h-14 flex items-center justify-center border border-gray-50">
+                            <MozziCharacter level={rec.userScore || 1} className="w-10 h-10" />
+                          </div>
+                          
+                          <div className="text-left">
+                            <p className="font-black text-[16px] text-gray-800 tracking-tight">{rec.name}</p>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span className="text-[11px] font-black text-[#10B981]">실시간</span>
+                              <span className="text-[11px] font-bold text-gray-400">
+                                {(rec.userScore || 1).toFixed(1)}점 · {rec.dist || '1.2KM'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* 화살표 아이콘 */}
+                        <ChevronRight size={18} className="text-gray-300 group-hover:text-emerald-500 transition-colors mr-1" />
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </section>
             )}
@@ -660,30 +698,18 @@ export default function App() {
         ) : activeTab === 'map' ? (
           <div className="h-full relative">
             <div ref={mapContainerRef} className="w-full h-full" />
-            {!isMapLoaded && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-                <p className="text-gray-500 font-bold">지도 로딩 중...</p>
-              </div>
-            )}
-            {selectedLocation && (
-              <div className="absolute bottom-6 left-4 right-4 bg-white rounded-3xl p-5 shadow-2xl z-[1000] flex items-center justify-between animate-slideUp">
-                <div className="flex items-center space-x-4">
-                  <MozziCharacter level={selectedLocation.userScore || 1} className="w-16 h-16" />
-                  <div className="text-left">
-                    <h4 className="font-black text-gray-800 text-lg">{selectedLocation.name}</h4>
-                    <p className="text-xs font-bold text-green-600">현재 {MOZZI_STATES[Math.round(selectedLocation.userScore || 1)].label}</p>
-                  </div>
+        
+        {/* 유동인구 범례 박스 */}
+              <div className="absolute top-4 left-4 z-[400] bg-white/90 backdrop-blur-md p-3 rounded-2xl shadow-xl border border-white/20">
+                <p className="text-[10px] font-black text-gray-400 mb-2 uppercase tracking-wider">유동인구 분포</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-gray-500">낮음</span>
+                  <div className="w-24 h-2 rounded-full bg-gradient-to-r from-[#FEF3C7] via-[#F59E0B] to-[#EF4444]" />
+                  <span className="text-[10px] font-bold text-gray-500">높음</span>
                 </div>
-                <button 
-                  onClick={() => setActiveTab('home')} // 홈 탭으로 가서 상세 제보하기
-                  className="bg-gray-100 p-3 rounded-2xl hover:bg-green-50 transition-colors"
-                >
-                  <ChevronRight size={20} className="text-gray-400" />
-                </button>
-               </div>
-            )}
-          </div>
-        ) : activeTab === 'add' ? (
+              </div>
+            </div>
+          ) : activeTab === 'add' ? (
           <div className="h-full overflow-y-auto p-6 bg-white">
             <h2 className="text-xl font-black text-gray-800 mb-6">새 장소 추가하기</h2>
             <form onSubmit={handleAddPlace} className="space-y-4">
@@ -693,58 +719,49 @@ export default function App() {
                   type="text"
                   value={newPlace.name}
                   onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-green-500 outline-none"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm outline-none"
                   placeholder="예: 성산 일출봉"
                   required
                 />
               </div>
-              
-              <div className="space-y-4">
-                <button 
-                  type="button"
-                  onClick={handleSearchAddress}
-                  className="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
-                >
-                  <Search size={18} /> 주소 검색으로 위치 찾기
-                </button>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                    <label className="text-[10px] font-black text-gray-400 uppercase block">위도(LAT)</label>
-                    <p className="text-sm font-bold text-gray-600">{newPlace.lat || '0.0000'}</p>
-                  </div>
-                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                    <label className="text-[10px] font-black text-gray-400 uppercase block">경도(LNG)</label>
-                    <p className="text-sm font-bold text-gray-600">{newPlace.lng || '0.0000'}</p>
-                  </div>
-                </div>
-              </div>
-
               <button
                 type="submit"
                 disabled={isAdding}
-                className="w-full bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-green-600/20 active:scale-95 transition-all disabled:opacity-50"
+                className="w-full bg-green-600 text-white font-black py-4 rounded-2xl active:scale-95 transition-all disabled:opacity-50"
               >
-                {isAdding ? '추가 중...' : '장소 추가'}
+                {isAdding ? '등록 중...' : '장소 등록하기'}
               </button>
             </form>
           </div>
         ) : null}
-      </div>
 
-      <nav className="bg-white border-t border-gray-100 shrink-0 shadow-2xl z-50">
-        <div className="flex justify-around items-center py-3">
-          <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center space-y-1 px-6 py-2 rounded-2xl transition-all ${activeTab === 'home' ? 'bg-green-50 text-green-600' : 'text-gray-400 hover:text-green-600'}`}>
-            <Navigation size={20} /><span className="text-[10px] font-black uppercase tracking-wide">{t('home')}</span>
-          </button>
-          <button onClick={() => setActiveTab('map')} className={`flex flex-col items-center space-y-1 px-6 py-2 rounded-2xl transition-all ${activeTab === 'map' ? 'bg-green-50 text-green-600' : 'text-gray-400 hover:text-green-600'}`}>
-            <MapIcon size={20} /><span className="text-[10px] font-black uppercase tracking-wide">{t('map')}</span>
-          </button>
-          <button onClick={() => setActiveTab('add')} className={`flex flex-col items-center space-y-1 px-6 py-2 rounded-2xl transition-all ${activeTab === 'add' ? 'bg-green-50 text-green-600' : 'text-gray-400 hover:text-green-600'}`}>
-            <PlusCircle size={20} /><span className="text-[10px] font-black uppercase tracking-wide">{t('add')}</span>
-          </button>
-        </div>
-      </nav>
+        {/* 하단 네비게이션 바 */}
+        <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-100 px-8 py-4 z-[500]">
+          <div className="max-w-md mx-auto flex justify-between items-center">
+            <button
+              onClick={() => setActiveTab('home')}
+              className={`flex flex-col items-center space-y-1 transition-all ${activeTab === 'home' ? 'text-green-600 scale-110' : 'text-gray-300'}`}
+            >
+              <Wind size={24} strokeWidth={activeTab === 'home' ? 3 : 2} />
+              <span className="text-[10px] font-black uppercase tracking-widest">Check</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('map')}
+              className={`flex flex-col items-center space-y-1 transition-all ${activeTab === 'map' ? 'text-green-600 scale-110' : 'text-gray-300'}`}
+            >
+              <MapIcon size={24} strokeWidth={activeTab === 'map' ? 3 : 2} />
+              <span className="text-[10px] font-black uppercase tracking-widest">Map</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('add')}
+              className={`flex flex-col items-center space-y-1 transition-all ${activeTab === 'add' ? 'text-green-600 scale-110' : 'text-gray-300'}`}
+            >
+              <PlusCircle size={24} strokeWidth={activeTab === 'add' ? 3 : 2} />
+              <span className="text-[10px] font-black uppercase tracking-widest">Add</span>
+            </button>
+          </div>
+        </nav>
+      </div>
     </div>
   );
 }

@@ -159,6 +159,7 @@ interface MozziState {
   border: string;
   textColor: string;
   level: number;
+  label: string;
 }
 
 const MOZZI_STATES: Record<number, MozziState> = {
@@ -487,6 +488,8 @@ export default function App() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    setAuthView('login');
+    setUser(null);
   };
 
   const totalScore = selectedLocation?.userScore || 1;
@@ -541,10 +544,10 @@ export default function App() {
              
              {/* [이곳에 버튼 추가] */}
              <div className="flex gap-1 mt-1">
-               {['KO', 'EN', 'JP'].map((l) => (
+               {(['KO', 'EN', 'JP'] as const).map((l) => (
                  <button 
                    key={l} 
-                   onClick={() => setLang(l as any)} 
+                   onClick={() => setLang(l)} 
                    className={`text-[9px] px-2 py-0.5 rounded-full border transition-all ${lang === l ? 'bg-green-600 text-white border-green-600 font-bold' : 'text-gray-300 border-gray-200 bg-white'}`}
                  >
                    {l}
@@ -554,7 +557,7 @@ export default function App() {
 
              <p className="text-[9px] text-gray-400 font-black uppercase leading-none tracking-widest mt-2">{isAnonymous ? t('anonymous') : user?.email?.split('@')[0] || '사용자'}</p>
           </div>
-          <button onClick={handleSignOut} className="text-gray-300 hover:text-green-600 p-1"><LogOut size={20} /></button>
+          <button onClick={handleSignOut} className="text-gray-300 hover:text-green-600 p-1 transition-colors"><LogOut size={20} /></button>
         </div>
         {activeTab !== 'add' && (
           <div className="relative">
@@ -613,10 +616,10 @@ export default function App() {
               <div className="space-y-3">
                 <div className="flex justify-between items-end px-1">
                   <h3 className="text-sm font-black text-gray-800 tracking-tight">{t('reportTitle')}</h3>
-                  {userReported && <div className="flex items-center space-x-1 text-[10px] font-bold text-green-600 animate-fadeIn"><Check size={12} /> <span>제보 완료!</span></div>}
+                  {userReported && <div className="flex items-center space-x-1 text-[10px] font-bold text-green-600"><Check size={12} /> <span>제보 완료!</span></div>}
                 </div>
                 <div className="grid grid-cols-5 gap-2">
-                  {[1, 2, 3, 4, 5].map(score => (
+                  {[1, 2, 3, 4, 5].map((score: number) => (
                     <button key={score} onClick={() => handleRating(score)} disabled={userReported} className={`aspect-square rounded-2xl border-2 transition-all active:scale-95 hover:scale-105 ${MOZZI_STATES[score].border} ${MOZZI_STATES[score].bg} ${userReported ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg cursor-pointer'}`}>
                       <div className="flex flex-col items-center justify-center h-full p-1"><MozziCharacter level={score} className="w-12 h-12" /><span className={`text-[9px] font-black mt-1 ${MOZZI_STATES[score].textColor}`}>{score}</span></div>
                     </button>
@@ -627,10 +630,10 @@ export default function App() {
               <div className="space-y-3">
                 <div className="flex justify-between items-end px-1">
                   <h3 className="text-sm font-black text-gray-800 tracking-tight flex items-center gap-1"><Car size={14} className="mr-1" /> {t('parkingTitle')}</h3>
-                  {parkingReported && <div className="flex items-center space-x-1 text-[10px] font-bold text-green-600 animate-fadeIn"><Check size={12} /> <span>제보 완료!</span></div>}
+                  {parkingReported && <div className="flex items-center space-x-1 text-[10px] font-bold text-green-600"><Check size={12} /> <span>제보 완료!</span></div>}
                 </div>
                 <div className="grid grid-cols-5 gap-2">
-                  {[1, 2, 3, 4, 5].map(score => (
+                  {[1, 2, 3, 4, 5].map((score: number) => (
                     <button key={score} onClick={() => handleParkingRating(score)} disabled={parkingReported} className={`p-3 rounded-2xl border-2 transition-all active:scale-95 hover:scale-105 ${MOZZI_STATES[score].border} ${MOZZI_STATES[score].bg} ${parkingReported ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg cursor-pointer'}`}>
                       <div className="flex flex-col items-center justify-center space-y-1"><Car size={20} className={PARKING_STATES[score].textColor} /><span className={`text-[9px] font-black ${PARKING_STATES[score].textColor}`}>{score}</span></div>
                     </button>
@@ -655,7 +658,31 @@ export default function App() {
             )}
           </main>
         ) : activeTab === 'map' ? (
-          <div className="h-full relative"><div ref={mapContainerRef} className="w-full h-full" />{!isMapLoaded && <div className="absolute inset-0 flex items-center justify-center bg-gray-100"><p className="text-gray-500 font-bold">지도 로딩 중...</p></div>}</div>
+          <div className="h-full relative">
+            <div ref={mapContainerRef} className="w-full h-full" />
+            {!isMapLoaded && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                <p className="text-gray-500 font-bold">지도 로딩 중...</p>
+              </div>
+            )}
+            {selectedLocation && (
+              <div className="absolute bottom-6 left-4 right-4 bg-white rounded-3xl p-5 shadow-2xl z-[1000] flex items-center justify-between animate-slideUp">
+                <div className="flex items-center space-x-4">
+                  <MozziCharacter level={selectedLocation.userScore || 1} className="w-16 h-16" />
+                  <div className="text-left">
+                    <h4 className="font-black text-gray-800 text-lg">{selectedLocation.name}</h4>
+                    <p className="text-xs font-bold text-green-600">현재 {MOZZI_STATES[Math.round(selectedLocation.userScore || 1)].label}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setActiveTab('home')} // 홈 탭으로 가서 상세 제보하기
+                  className="bg-gray-100 p-3 rounded-2xl hover:bg-green-50 transition-colors"
+                >
+                  <ChevronRight size={20} className="text-gray-400" />
+                </button>
+               </div>
+            )}
+          </div>
         ) : activeTab === 'add' ? (
           <div className="h-full overflow-y-auto p-6 bg-white">
             <h2 className="text-xl font-black text-gray-800 mb-6">새 장소 추가하기</h2>
@@ -671,7 +698,7 @@ export default function App() {
                   required
                 />
               </div>
-              {/* 600번 라인 근처, 장소 이름 입력창 바로 아래에 삽입 */}
+              
               <div className="space-y-4">
                 <button 
                   type="button"
@@ -683,15 +710,16 @@ export default function App() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                    <label className="text-[10px] font-black text-gray-400 uppercase">위도(LAT)</label>
+                    <label className="text-[10px] font-black text-gray-400 uppercase block">위도(LAT)</label>
                     <p className="text-sm font-bold text-gray-600">{newPlace.lat || '0.0000'}</p>
                   </div>
                   <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                    <label className="text-[10px] font-black text-gray-400 uppercase">경도(LNG)</label>
+                    <label className="text-[10px] font-black text-gray-400 uppercase block">경도(LNG)</label>
                     <p className="text-sm font-bold text-gray-600">{newPlace.lng || '0.0000'}</p>
                   </div>
                 </div>
               </div>
+
               <button
                 type="submit"
                 disabled={isAdding}

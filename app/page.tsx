@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, MapPin, Star, Navigation, Wind, Map as MapIcon, ChevronRight, LogOut, PlusCircle, Check, Car } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
-import { init } from 'next/dist/compiled/webpack/webpack';
 declare global {
   interface Window {
     daum: any;
@@ -57,7 +56,7 @@ const TRANSLATIONS = {
     anonymous: "Guest Mode"
   },
   JP: {
-    title: "餅チェック",
+    title: "Mozziチェック",
     search: "場所を検索",
     home: "ホーム", map: "マップ", add: "追加",
     reportTitle: "今の混雑状況は？",
@@ -67,11 +66,11 @@ const TRANSLATIONS = {
     guest: "ゲストモード",
     liveAvg: "平均混雑度",
     mozzis: [
-      { label: '餅が柔らかいです', desc: 'とても快適で余裕があります！' },
-      { label: '餅がもちもちです', desc: '心地よく空いています。' },
-      { label: '餅が焼かれています', desc: '適度に活気があります。' },
-      { label: '餅が煮えています', desc: '混んでいます！' },
-      { label: '餅が焦げています', desc: '混雑しすぎです！' },
+      { label: 'Mozziが柔らかいです', desc: 'とても快適で余裕があります！' },
+      { label: 'Mozziがもちもちです', desc: '心地よく空いています。' },
+      { label: 'Mozziが焼かれています', desc: '適度に活気があります。' },
+      { label: 'Mozziが煮えています', desc: '混んでいます！' },
+      { label: 'Mozziが焦げています', desc: '混雑しすぎです！' },
     ],
     parkings: ["空車", "余裕", "普通", "混雑", "満車"],
     anonymous: "ゲストモード"
@@ -159,6 +158,7 @@ interface MozziState {
   border: string;
   textColor: string;
   level: number;
+  // label 필드는 TRANSLATIONS에서 가져오도록 변경합니다.
 }
 
 const MOZZI_STATES: Record<number, MozziState> = {
@@ -214,13 +214,13 @@ export default function App() {
   const [newPlace, setNewPlace] = useState({ name: '', lat: '', lng: '' });
   const [isAdding, setIsAdding] = useState(false);
   const [isAnonymous, setIsAnonymous] = useState(true);
-  const [isKakaoLoaded, setIsKakaoLoaded] = useState(false); //
+  const [isKakaoLoaded, setIsKakaoLoaded] = useState(false);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
 
   const selectedLocation = useMemo(() => {
-    return locations.find((l: Location) => l.id === selectedId) || locations[0] || null;
+    return locations.find(l => l.id === selectedId) || locations[0] || null;
   }, [locations, selectedId]);
 
   const fetchLocationsAndReports = async () => {
@@ -237,6 +237,7 @@ export default function App() {
     setLocations(locsWithScores);
   };
 
+  // 인증 초기화
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -253,6 +254,61 @@ export default function App() {
     return () => subscription?.unsubscribe();
   }, []);
 
+  const handleSearchAddress = () => {
+    if (!window.daum || !window.kakao || !window.kakao.maps) {
+      alert("지도 서비스 로딩 중입니다. 잠시만 기다려주세요!");
+      return;
+    }
+
+    new window.daum.Postcode({
+      oncomplete: function(data: any) {
+        const fullAddress = data.address;
+        window.kakao.maps.load(() => {
+          const geocoder = new window.kakao.maps.services.Geocoder();
+          geocoder.addressSearch(fullAddress, (result: any, status: any) => {
+            if (status === window.kakao.maps.services.Status.OK) {
+              setNewPlace((prev: any) => ({
+                ...prev,
+                name: data.buildingName || fullAddress,
+                lat: result[0].y,
+                lng: result[0].x
+              }));
+            } else {
+              alert("좌표를 불러오는 데 실패했습니다.");
+            }
+          });
+        });
+      }
+    }).open();
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    if (!document.getElementById('daum-postcode')) {
+      const postcodeScript = document.createElement('script');
+      postcodeScript.id = 'daum-postcode';
+      postcodeScript.src = "https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
+      postcodeScript.async = true;
+      document.head.appendChild(postcodeScript);
+    }
+
+    if (!document.getElementById('kakao-maps-sdk')) {
+      const kakaoScript = document.createElement('script');
+      kakaoScript.id = 'kakao-maps-sdk';
+      kakaoScript.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=13e79714db6e931bf4b822cb209c27a5&libraries=services&autoload=false`;
+      kakaoScript.async = true;
+      kakaoScript.onload = () => {
+        window.kakao.maps.load(() => {
+          console.log('✅ 카카오 맵 서비스 로드 완료');
+          setIsKakaoLoaded(true);
+        });
+      };
+      document.head.appendChild(kakaoScript);
+    }
+  }, []);
+
+  // 장소 및 리포트 데이터 실시간 구독
   useEffect(() => {
     fetchLocationsAndReports();
     const locationsChannel = supabase.channel('locations-changes')
@@ -265,81 +321,175 @@ export default function App() {
   useEffect(() => {
     if (activeTab === 'map') {
       if (!document.getElementById('leaflet-css')) {
-        const link = document.createElement('link'); link.id = 'leaflet-css'; link.rel = 'stylesheet'; link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(link);
+        const link = document.createElement('link');
+        link.id = 'leaflet-css';
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(link);
       }
       if (!document.getElementById('leaflet-js')) {
-        const script = document.createElement('script'); script.id = 'leaflet-js'; script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; script.onload = () => setIsMapLoaded(true); document.head.appendChild(script);
-      } else if (typeof window !== 'undefined' && (window as any).L) { setIsMapLoaded(true); }
+        const script = document.createElement('script');
+        script.id = 'leaflet-js';
+        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        script.onload = () => setIsMapLoaded(true);
+        document.head.appendChild(script);
+      } else if (typeof window !== 'undefined' && (window as any).L) {
+        setIsMapLoaded(true);
+      }
     }
   }, [activeTab]);
 
+  const initMap = React.useCallback(() => {
+    if (!mapContainerRef.current || !(window as any).L || !selectedLocation) return;
+
+    if (mapInstance.current) {
+      mapInstance.current.remove();
+      mapInstance.current = null;
+    }
+
+    const L = (window as any).L;
+    const map = L.map(mapContainerRef.current, { zoomControl: false })
+      .setView([selectedLocation.latitude || 33.39, selectedLocation.longitude || 126.23], 12);
+
+    mapInstance.current = map;
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+    locations.forEach((loc: Location) => {
+      const score = loc.userScore || 1;
+      const state = MOZZI_STATES[Math.round(score)] || MOZZI_STATES[1];
+      L.circleMarker([loc.latitude, loc.longitude], {
+        radius: 14,
+        fillColor: state.color,
+        color: '#064E3B',
+        weight: 2,
+        fillOpacity: 0.9
+      }).addTo(map).on('click', () => {
+        setSelectedId(loc.id);
+      });
+    });
+
+    setTimeout(() => map.invalidateSize(), 200);
+  }, [isMapLoaded, locations, selectedLocation]);
+
   useEffect(() => {
     let timer: NodeJS.Timeout;
-    if (activeTab === 'map' && isMapLoaded && mapContainerRef.current) {
-      const initMap = () => {
-        if (typeof window === 'undefined' || !(window as any).L || !mapContainerRef.current) return;
-        if (mapInstance.current) { mapInstance.current.remove(); mapInstance.current = null; }
-        const L = (window as any).L;
-        const map = L.map(mapContainerRef.current, { zoomControl: false }).setView([selectedLocation?.latitude || 33.39, selectedLocation?.longitude || 126.23], 12);
-        mapInstance.current = map;
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-        locations.forEach((loc: Location) => {
-          const score = loc.userScore || 1;
-          const state = MOZZI_STATES[Math.round(score)] || MOZZI_STATES[1];
-          L.circleMarker([loc.latitude, loc.longitude], { radius: 14, fillColor: state.color, color: '#064E3B', weight: 2, fillOpacity: 0.9 }).addTo(map).on('click', () => setSelectedId(loc.id));
-        });
-        setTimeout(() => map.invalidateSize(), 200);
-      };
+    if (activeTab === 'map' && isMapLoaded) {
       timer = setTimeout(initMap, 100);
     }
-    return () => { clearTimeout(timer); if (mapInstance.current) { mapInstance.current.remove(); mapInstance.current = null; } };
-  }, [activeTab, isMapLoaded, locations, selectedLocation]);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [activeTab, isMapLoaded, initMap]);
 
   const handleRating = async (score: number) => {
-    if (isAnonymous) { setAuthError("회원가입 후 제보가 가능합니다. 🌿"); return; }
+    if (isAnonymous) {
+      setAuthError("회원가입 후 제보가 가능합니다. 🌿");
+      return;
+    }
+    if (!selectedLocation) return;
     setUserReported(true);
     try {
       const currentId = selectedLocation.id;
-      await supabase.from('reports').insert({ location_id: currentId, congestion_level: score.toString(), parking_level: "1", comment: "" });
-      await supabase.from('locations').update({ crowd_sum: (selectedLocation.crowd_sum || 0) + score, crowd_count: (selectedLocation.crowd_count || 0) + 1 }).eq('id', currentId);
-      await fetchLocationsAndReports(); setSelectedId(currentId);
-    } catch (err) { console.error("제보 실패:", err); }
+      await supabase.from('reports').insert({
+        location_id: currentId,
+        congestion_level: score.toString(),
+        parking_level: "1",
+        comment: ""
+      });
+      await supabase.from('locations').update({
+        crowd_sum: (selectedLocation.crowd_sum || 0) + score,
+        crowd_count: (selectedLocation.crowd_count || 0) + 1
+      }).eq('id', currentId);
+      await fetchLocationsAndReports();
+      setSelectedId(currentId);
+    } catch (err) {
+      console.error("제보 실패:", err);
+    }
     setTimeout(() => setUserReported(false), 2000);
   };
 
   const handleParkingRating = async (score: number) => {
-    if (isAnonymous) { setAuthError("회원가입 후 주차 제보가 가능합니다. 🚗"); return; }
+    if (isAnonymous) {
+      setAuthError("회원가입 후 주차 제보가 가능합니다. 🚗");
+      return;
+    }
+    if (!selectedLocation) return;
     setParkingReported(true);
     try {
       const currentId = selectedLocation.id;
-      await supabase.from('reports').insert({ location_id: currentId, parking_level: String(score), congestion_level: "1", comment: "주차 제보" });
-      await supabase.from('locations').update({ parking_sum: (selectedLocation.parking_sum || 0) + score, parking_count: (selectedLocation.parking_count || 0) + 1 }).eq('id', currentId);
+      await supabase.from('reports').insert({
+        location_id: currentId,
+        parking_level: String(score),
+        congestion_level: "1",
+        comment: "주차 제보"
+      });
+      await supabase.from('locations').update({
+        parking_sum: (selectedLocation.parking_sum || 0) + score,
+        parking_count: (selectedLocation.parking_count || 0) + 1
+      }).eq('id', currentId);
       await fetchLocationsAndReports();
-    } catch (err) { console.error("주차 제보 최종 실패:", err); }
+    } catch (err) {
+      console.error("주차 제보 실패:", err);
+    }
     setTimeout(() => setParkingReported(false), 2000);
   };
 
   const handleAddPlace = async (e: React.FormEvent) => {
-    e.preventDefault(); if (!newPlace.name || !newPlace.lat || !newPlace.lng) return;
+    e.preventDefault();
+    if (!newPlace.name || !newPlace.lat || !newPlace.lng) return;
     setIsAdding(true);
     try {
-      const { data, error } = await supabase.from('locations').insert({ name: newPlace.name, latitude: parseFloat(newPlace.lat), longitude: parseFloat(newPlace.lng), dist: 'N/A', address: '', category: '관광', crowd_sum: 0, crowd_count: 0, parking_sum: 0, parking_count: 0 }).select().single();
-      if (error) throw error; setNewPlace({ name: '', lat: '', lng: '' }); setSelectedId(data.id); setActiveTab('home');
-    } catch (err) { console.error("장소 추가 실패:", err); } finally { setIsAdding(false); }
+      const { data, error } = await supabase
+        .from('locations')
+        .insert({
+          name: newPlace.name,
+          latitude: parseFloat(newPlace.lat),
+          longitude: parseFloat(newPlace.lng),
+          dist: 'N/A',
+          address: '',
+          category: '관광',
+          crowd_sum: 0,
+          crowd_count: 0,
+          parking_sum: 0,
+          parking_count: 0
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setNewPlace({ name: '', lat: '', lng: '' });
+      setSelectedId(data.id);
+      setActiveTab('home');
+    } catch (err: any) {
+      console.error("장소 추가 실패:", err.message);
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
-    e.preventDefault(); setAuthError('');
+    e.preventDefault();
+    setAuthError('');
     try {
       if (authView === 'login') {
-        const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) throw error;
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
       } else {
-        const { error } = await supabase.auth.signUp({ email, password }); if (error) throw error; setAuthError('가입 확인 이메일을 보냈습니다!');
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        setAuthError('가입 확인 이메일을 보냈습니다!');
       }
-    } catch (err: any) { setAuthError(err.message || "인증 정보를 확인해주세요."); }
+    } catch (err: any) {
+      setAuthError(err.message || "인증 정보를 확인해주세요.");
+    }
   };
 
-  const handleSignOut = async () => { await supabase.auth.signOut(); };
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setAuthView('login');
+    setUser(null);
+  };
 
   const totalScore = selectedLocation?.userScore || 1;
   const currentMozzi = MOZZI_STATES[Math.round(totalScore)] || MOZZI_STATES[1];
@@ -393,10 +543,10 @@ export default function App() {
              
              {/* [이곳에 버튼 추가] */}
              <div className="flex gap-1 mt-1">
-               {['KO', 'EN', 'JP'].map((l) => (
+               {(['KO', 'EN', 'JP'] as const).map((l) => (
                  <button 
                    key={l} 
-                   onClick={() => setLang(l as any)} 
+                   onClick={() => setLang(l)} 
                    className={`text-[9px] px-2 py-0.5 rounded-full border transition-all ${lang === l ? 'bg-green-600 text-white border-green-600 font-bold' : 'text-gray-300 border-gray-200 bg-white'}`}
                  >
                    {l}
@@ -406,7 +556,7 @@ export default function App() {
 
              <p className="text-[9px] text-gray-400 font-black uppercase leading-none tracking-widest mt-2">{isAnonymous ? t('anonymous') : user?.email?.split('@')[0] || '사용자'}</p>
           </div>
-          <button onClick={handleSignOut} className="text-gray-300 hover:text-green-600 p-1"><LogOut size={20} /></button>
+          <button onClick={handleSignOut} className="text-gray-300 hover:text-green-600 p-1 transition-colors"><LogOut size={20} /></button>
         </div>
         {activeTab !== 'add' && (
           <div className="relative">
@@ -465,10 +615,10 @@ export default function App() {
               <div className="space-y-3">
                 <div className="flex justify-between items-end px-1">
                   <h3 className="text-sm font-black text-gray-800 tracking-tight">{t('reportTitle')}</h3>
-                  {userReported && <div className="flex items-center space-x-1 text-[10px] font-bold text-green-600 animate-fadeIn"><Check size={12} /> <span>제보 완료!</span></div>}
+                  {userReported && <div className="flex items-center space-x-1 text-[10px] font-bold text-green-600"><Check size={12} /> <span>제보 완료!</span></div>}
                 </div>
                 <div className="grid grid-cols-5 gap-2">
-                  {[1, 2, 3, 4, 5].map(score => (
+                  {[1, 2, 3, 4, 5].map((score: number) => (
                     <button key={score} onClick={() => handleRating(score)} disabled={userReported} className={`aspect-square rounded-2xl border-2 transition-all active:scale-95 hover:scale-105 ${MOZZI_STATES[score].border} ${MOZZI_STATES[score].bg} ${userReported ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg cursor-pointer'}`}>
                       <div className="flex flex-col items-center justify-center h-full p-1"><MozziCharacter level={score} className="w-12 h-12" /><span className={`text-[9px] font-black mt-1 ${MOZZI_STATES[score].textColor}`}>{score}</span></div>
                     </button>
@@ -478,11 +628,11 @@ export default function App() {
 
               <div className="space-y-3">
                 <div className="flex justify-between items-end px-1">
-                  <h3 className="text-sm font-black text-gray-800 tracking-tight flex items-center gap-1"><Car size={14} /> {t('parkingTitle')}</h3>
-                  {parkingReported && <div className="flex items-center space-x-1 text-[10px] font-bold text-green-600 animate-fadeIn"><Check size={12} /> <span>제보 완료!</span></div>}
+                  <h3 className="text-sm font-black text-gray-800 tracking-tight flex items-center gap-1"><Car size={14} className="mr-1" /> {t('parkingTitle')}</h3>
+                  {parkingReported && <div className="flex items-center space-x-1 text-[10px] font-bold text-green-600"><Check size={12} /> <span>제보 완료!</span></div>}
                 </div>
                 <div className="grid grid-cols-5 gap-2">
-                  {[1, 2, 3, 4, 5].map(score => (
+                  {[1, 2, 3, 4, 5].map((score: number) => (
                     <button key={score} onClick={() => handleParkingRating(score)} disabled={parkingReported} className={`p-3 rounded-2xl border-2 transition-all active:scale-95 hover:scale-105 ${MOZZI_STATES[score].border} ${MOZZI_STATES[score].bg} ${parkingReported ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg cursor-pointer'}`}>
                       <div className="flex flex-col items-center justify-center space-y-1"><Car size={20} className={PARKING_STATES[score].textColor} /><span className={`text-[9px] font-black ${PARKING_STATES[score].textColor}`}>{score}</span></div>
                     </button>
@@ -492,48 +642,145 @@ export default function App() {
               {authError && <div className="text-center text-xs font-bold text-orange-600 bg-orange-50 border border-orange-200 rounded-2xl py-3 px-4">{authError}</div>}
             </section>
 
+          {/* ✨ 이미지 디자인을 적용한 추천 섹션 */}
             {recommendations.length > 0 && (
-              <section className="space-y-3 px-1">
-                <h3 className="text-sm font-black text-gray-800 tracking-tight flex items-center gap-1"><Star size={14} className="text-yellow-500" /> {t('recommend')}</h3>
-                <div className="space-y-2">
-                  {recommendations.map((rec: Location) => (
-                    <button key={rec.id} onClick={() => setSelectedId(rec.id)} className="w-full bg-white rounded-2xl p-4 border border-gray-100 hover:border-green-200 transition-all flex items-center justify-between group hover:shadow-md">
-                      <div className="flex items-center space-x-3"><MozziCharacter level={rec.userScore || 1} className="w-12 h-12" /><div className="text-left"><p className="font-bold text-sm text-gray-700">{rec.name}</p><p className="text-[10px] text-gray-400 font-medium">{rec.dist}</p></div></div>
-                      <ChevronRight size={16} className="text-gray-300 group-hover:text-green-500 transition-colors" />
-                    </button>
-                  ))}
+              <section className="px-1 mt-6">
+                <div className="bg-[#F0FDF4]/60 rounded-[2.5rem] p-7 border border-[#DCFCE7] relative overflow-hidden">
+                  {/* 상단 타이틀 영역 */}
+                  <div className="flex items-center gap-2.5 mb-5">
+                    <div className="bg-white w-9 h-9 rounded-full flex items-center justify-center shadow-sm border border-emerald-50">
+                      <div className="w-5 h-5 rounded-full border-2 border-[#10B981] flex items-center justify-center text-[10px] font-black text-[#10B981]">i</div>
+                    </div>
+                    <h3 className="text-[17px] font-black text-[#065F46] tracking-tight">모찌 가이드의 추천</h3>
+                  </div>
+
+                  {/* 가이드 문구 */}
+                  <p className="text-[14px] font-bold text-[#059669] leading-relaxed mb-6 px-1 opacity-90">
+                    {selectedLocation?.name}은(는) 지금 아주 쾌적해요! <br/>
+                    다른 여유로운 곳도 확인해보세요.
+                  </p>
+
+                  {/* 추천 리스트 카드 */}
+                  <div className="space-y-3">
+                    {recommendations.map(rec => (
+                      <button
+                        key={rec.id}
+                        onClick={() => setSelectedId(rec.id)}
+                        className="w-full bg-white rounded-[1.8rem] p-4 flex items-center justify-between group shadow-[0_4px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] border border-white"
+                      >
+                        <div className="flex items-center gap-4">
+                          {/* 둥근 사각형 모찌 아이콘 배경 */}
+                          <div className="bg-[#F8FAFC] rounded-2xl p-2 w-14 h-14 flex items-center justify-center border border-gray-50">
+                            <MozziCharacter level={rec.userScore || 1} className="w-10 h-10" />
+                          </div>
+                          
+                          <div className="text-left">
+                            <p className="font-black text-[16px] text-gray-800 tracking-tight">{rec.name}</p>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span className="text-[11px] font-black text-[#10B981]">실시간</span>
+                              <span className="text-[11px] font-bold text-gray-400">
+                                {(rec.userScore || 1).toFixed(1)}점 · {rec.dist || '1.2KM'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* 화살표 아이콘 */}
+                        <ChevronRight size={18} className="text-gray-300 group-hover:text-emerald-500 transition-colors mr-1" />
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </section>
             )}
           </main>
         ) : activeTab === 'map' ? (
-          <div className="h-full relative"><div ref={mapContainerRef} className="w-full h-full" />{!isMapLoaded && <div className="absolute inset-0 flex items-center justify-center bg-gray-100"><p className="text-gray-500 font-bold">지도 로딩 중...</p></div>}</div>
+          <div className="h-full relative">
+            <div ref={mapContainerRef} className="w-full h-full" />
+        
+        {/* 유동인구 범례 박스 */}
+              <div className="absolute top-4 left-4 z-[400] bg-white/90 backdrop-blur-md p-3 rounded-2xl shadow-xl border border-white/20">
+                <p className="text-[10px] font-black text-gray-400 mb-2 uppercase tracking-wider">유동인구 분포</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-gray-500">낮음</span>
+                  <div className="w-24 h-2 rounded-full bg-gradient-to-r from-[#FEF3C7] via-[#F59E0B] to-[#EF4444]" />
+                  <span className="text-[10px] font-bold text-gray-500">높음</span>
+                </div>
+              </div>
+            
+            {selectedLocation && (
+              <div className="absolute bottom-6 left-4 right-4 bg-white rounded-3xl p-5 shadow-2xl z-[1000] flex items-center justify-between animate-slideUp">
+                <div className="flex items-center space-x-4">
+                  <MozziCharacter level={selectedLocation.userScore || 1} className="w-16 h-16" />
+                  <div className="text-left">
+                    <h4 className="font-black text-gray-800 text-lg">{selectedLocation.name}</h4>
+                    <p className="text-xs font-bold text-green-600">
+                      현재 {t('mozzis')[Math.max(0, Math.min(4, Math.round(selectedLocation.userScore || 1) - 1))]?.label}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setActiveTab('home')} // 홈 탭으로 가서 상세 제보하기
+                  className="bg-gray-100 p-3 rounded-2xl hover:bg-green-50 transition-colors"
+                >
+                  <ChevronRight size={20} className="text-gray-400" />
+                </button>
+               </div>
+            )}
+          </div>
         ) : activeTab === 'add' ? (
           <div className="h-full overflow-y-auto p-6 bg-white">
             <h2 className="text-xl font-black text-gray-800 mb-6">새 장소 추가하기</h2>
             <form onSubmit={handleAddPlace} className="space-y-4">
-              <div><label className="block text-sm font-bold text-gray-700 mb-2">장소 이름</label><input type="text" value={newPlace.name} onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })} className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-green-500 outline-none" placeholder="예: 성산 일출봉" required /></div>
-              <div><label className="block text-sm font-bold text-gray-700 mb-2">위도 (Latitude)</label><input type="number" step="any" value={newPlace.lat} onChange={(e) => setNewPlace({ ...newPlace, lat: e.target.value })} className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-green-500 outline-none" placeholder="33.xxxx" required /></div>
-              <div><label className="block text-sm font-bold text-gray-700 mb-2">경도 (Longitude)</label><input type="number" step="any" value={newPlace.lng} onChange={(e) => setNewPlace({ ...newPlace, lng: e.target.value })} className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm focus:ring-2 focus:ring-green-500 outline-none" placeholder="126.xxxx" required /></div>
-              <button type="submit" disabled={isAdding} className="w-full bg-green-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-green-600/20 active:scale-95 transition-all disabled:opacity-50">{isAdding ? '추가 중...' : '장소 추가'}</button>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">장소 이름</label>
+                <input
+                  type="text"
+                  value={newPlace.name}
+                  onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm outline-none"
+                  placeholder="예: 성산 일출봉"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isAdding}
+                className="w-full bg-green-600 text-white font-black py-4 rounded-2xl active:scale-95 transition-all disabled:opacity-50"
+              >
+                {isAdding ? '등록 중...' : '장소 등록하기'}
+              </button>
             </form>
           </div>
         ) : null}
-      </div>
 
-      <nav className="bg-white border-t border-gray-100 shrink-0 shadow-2xl z-50">
-        <div className="flex justify-around items-center py-3">
-          <button onClick={() => setActiveTab('home')} className={`flex flex-col items-center space-y-1 px-6 py-2 rounded-2xl transition-all ${activeTab === 'home' ? 'bg-green-50 text-green-600' : 'text-gray-400 hover:text-green-600'}`}>
-            <Navigation size={20} /><span className="text-[10px] font-black uppercase tracking-wide">{t('home')}</span>
-          </button>
-          <button onClick={() => setActiveTab('map')} className={`flex flex-col items-center space-y-1 px-6 py-2 rounded-2xl transition-all ${activeTab === 'map' ? 'bg-green-50 text-green-600' : 'text-gray-400 hover:text-green-600'}`}>
-            <MapIcon size={20} /><span className="text-[10px] font-black uppercase tracking-wide">{t('map')}</span>
-          </button>
-          <button onClick={() => setActiveTab('add')} className={`flex flex-col items-center space-y-1 px-6 py-2 rounded-2xl transition-all ${activeTab === 'add' ? 'bg-green-50 text-green-600' : 'text-gray-400 hover:text-green-600'}`}>
-            <PlusCircle size={20} /><span className="text-[10px] font-black uppercase tracking-wide">{t('add')}</span>
-          </button>
-        </div>
-      </nav>
+        {/* 하단 네비게이션 바 */}
+        <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-100 px-8 py-4 z-[500]">
+          <div className="max-w-md mx-auto flex justify-between items-center">
+            <button
+              onClick={() => setActiveTab('home')}
+              className={`flex flex-col items-center space-y-1 transition-all ${activeTab === 'home' ? 'text-green-600 scale-110' : 'text-gray-300'}`}
+            >
+              <Wind size={24} strokeWidth={activeTab === 'home' ? 3 : 2} />
+              <span className="text-[10px] font-black uppercase tracking-widest">Check</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('map')}
+              className={`flex flex-col items-center space-y-1 transition-all ${activeTab === 'map' ? 'text-green-600 scale-110' : 'text-gray-300'}`}
+            >
+              <MapIcon size={24} strokeWidth={activeTab === 'map' ? 3 : 2} />
+              <span className="text-[10px] font-black uppercase tracking-widest">Map</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('add')}
+              className={`flex flex-col items-center space-y-1 transition-all ${activeTab === 'add' ? 'text-green-600 scale-110' : 'text-gray-300'}`}
+            >
+              <PlusCircle size={24} strokeWidth={activeTab === 'add' ? 3 : 2} />
+              <span className="text-[10px] font-black uppercase tracking-widest">Add</span>
+            </button>
+          </div>
+        </nav>
+      </div>
     </div>
   );
 }

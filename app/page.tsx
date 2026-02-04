@@ -25,6 +25,15 @@ const TRANSLATIONS = {
     login: "로그인", join: "회원가입",
     guest: "둘러보기 (Guest Mode)",
     liveAvg: "실시간 평균",
+    addTitle: "새 장소 추가하기",
+    placeName: "장소 이름",
+    placeHolder: "예: 성산 일출봉",
+    locInfo: "위치 정보",
+    searchBtn: "주소 검색으로 위치 찾기",
+    lat: "위도", lng: "경도",
+    successLoc: "✅ 위치 정보가 성공적으로 입력되었습니다.",
+    submitBtn: "장소 등록하기",
+    loading: "모찌 로딩 중...",
     mozzis: [
       { label: '모찌가 부드러워요', desc: '아주 쾌적하고 여유로워요!' },
       { label: '모찌가 말랑해요', desc: '기분 좋게 한산한 상태입니다.' },
@@ -45,6 +54,15 @@ const TRANSLATIONS = {
     login: "Login", join: "Join Now",
     guest: "Guest Mode",
     liveAvg: "Live Avg",
+    addTitle: "Add New Place",
+    placeName: "Place Name",
+    placeHolder: "Please enter in Korean",
+    locInfo: "Location Info",
+    searchBtn: "Find location by address",
+    lat: "LAT", lng: "LNG",
+    successLoc: "✅ Location information entered successfully.",
+    submitBtn: "Register Place",
+    loading: "Loading Mozzi...",
     mozzis: [
       { label: 'Mozzi is Soft', desc: 'Very quiet and relaxing!' },
       { label: 'Mozzi is Chewy', desc: 'Nice and peaceful.' },
@@ -56,7 +74,7 @@ const TRANSLATIONS = {
     anonymous: "Guest Mode"
   },
   JP: {
-    title: "Mozziチェック",
+    title: "MOZZIチェック",
     search: "場所を検索",
     home: "ホーム", map: "マップ", add: "追加",
     reportTitle: "今の混雑状況は？",
@@ -65,6 +83,15 @@ const TRANSLATIONS = {
     login: "ログイン", join: "会員登録",
     guest: "ゲストモード",
     liveAvg: "平均混雑度",
+    addTitle: "新しい場所を追加",
+    placeName: "場所の名前",
+    placeHolder: "韓国語で入力してください",
+    locInfo: "位置情報",
+    searchBtn: "住所で位置を検索",
+    lat: "緯度", lng: "経度",
+    successLoc: "✅ 位置情報が正常に入力されました。",
+    submitBtn: "場所を登録する",
+    loading: "Mozzi読み込み中...",
     mozzis: [
       { label: 'Mozziが柔らかいです', desc: 'とても快適で余裕があります！' },
       { label: 'Mozziがもちもちです', desc: '心地よく空いています。' },
@@ -755,54 +782,51 @@ export default function App() {
           </div>
         ) : activeTab === 'add' ? (
             <div className="h-full overflow-y-auto p-6 bg-white pb-32">
-              <h2 className="text-xl font-black text-gray-800 mb-6">새 장소 추가하기</h2>
+              <h2 className="text-xl font-black text-gray-800 mb-6">{t('addTitle')}</h2>
               <form onSubmit={handleAddPlace} className="space-y-6">
-      {/* 1. 장소 이름 입력창 */}
                 <div>
-                  <label className="block text-xs font-black text-gray-400 uppercase mb-2 tracking-widest">장소 이름</label>
+                  <label className="block text-xs font-black text-gray-400 uppercase mb-2 tracking-widest">{t('placeName')}</label>
                   <input
                     type="text"
                     value={newPlace.name}
                     onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })}
                     className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-green-500 outline-none transition-all"
-                    placeholder="예: 성산 일출봉"
+                    placeholder={t('placeHolder')}
                     required
                   />
                 </div>
 
-      {/* 2. 주소 검색 버튼 (UI 추가 지점) */}
                 <div className="space-y-4">
-                  <label className="block text-xs font-black text-gray-400 uppercase mb-2 tracking-widest">위치 정보</label>
+                  <label className="block text-xs font-black text-gray-400 uppercase mb-2 tracking-widest">{t('locInfo')}</label>
                   <button 
                     type="button"
                     onClick={handleSearchAddress}
                     className="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg shadow-emerald-600/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                   >
-                    <Search size={18} strokeWidth={3} /> 주소 검색으로 위치 찾기
+                    <Search size={18} strokeWidth={3} /> {t('searchBtn')}
                   </button>
 
-        {/* 3. 위도/경도 표시 카드 (UI 추가 지점) */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-tighter block mb-1">위도(LAT)</label>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-tighter block mb-1">{t('lat')}</label>
                       <p className="text-sm font-black text-gray-700">{newPlace.lat || '0.0000'}</p>
                     </div>
                     <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-tighter block mb-1">경도(LNG)</label>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-tighter block mb-1">{t('lng')}</label>
                       <p className="text-sm font-black text-gray-700">{newPlace.lng || '0.0000'}</p>
                     </div>
                   </div>
                   {newPlace.lat && (
-                    <p className="text-[10px] text-green-600 font-bold px-1 italic">✅ 위치 정보가 성공적으로 입력되었습니다.</p>
+                    <p className="text-[10px] text-green-600 font-bold px-1 italic">{t('successLoc')}</p>
                   )}
                 </div>
 
                 <button
                   type="submit"
                   disabled={isAdding || !newPlace.lat}
-                  className="w-full bg-green-600 text-white font-black py-5 rounded-[2rem] shadow-xl shadow-green-600/20 active:scale-95 transition-all disabled:opacity-30 disabled:grayscale"
+                  className="w-full bg-green-600 text-white font-black py-5 rounded-[2rem] shadow-xl shadow-green-600/20 active:scale-95 transition-all disabled:opacity-30"
                 >
-                  {isAdding ? '모찌 로딩 중...' : '장소 등록하기'}
+                  {isAdding ? t('loading') : t('submitBtn')}
                 </button>
               </form>
             </div>

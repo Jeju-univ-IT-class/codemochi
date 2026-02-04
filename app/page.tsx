@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, MapPin, Star, Navigation, Wind, Map as MapIcon, ChevronRight, LogOut, PlusCircle, Check, Car } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
-import { init } from 'next/dist/compiled/webpack/webpack';
 declare global {
   interface Window {
     daum: any;
@@ -57,7 +56,7 @@ const TRANSLATIONS = {
     anonymous: "Guest Mode"
   },
   JP: {
-    title: "餅チェック",
+    title: "Mozziチェック",
     search: "場所を検索",
     home: "ホーム", map: "マップ", add: "追加",
     reportTitle: "今の混雑状況は？",
@@ -67,11 +66,11 @@ const TRANSLATIONS = {
     guest: "ゲストモード",
     liveAvg: "平均混雑度",
     mozzis: [
-      { label: '餅が柔らかいです', desc: 'とても快適で余裕があります！' },
-      { label: '餅がもちもちです', desc: '心地よく空いています。' },
-      { label: '餅が焼かれています', desc: '適度に活気があります。' },
-      { label: '餅が煮えています', desc: '混んでいます！' },
-      { label: '餅が焦げています', desc: '混雑しすぎです！' },
+      { label: 'Mozziが柔らかいです', desc: 'とても快適で余裕があります！' },
+      { label: 'Mozziがもちもちです', desc: '心地よく空いています。' },
+      { label: 'Mozziが焼かれています', desc: '適度に活気があります。' },
+      { label: 'Mozziが煮えています', desc: '混んでいます！' },
+      { label: 'Mozziが焦げています', desc: '混雑しすぎです！' },
     ],
     parkings: ["空車", "余裕", "普通", "混雑", "満車"],
     anonymous: "ゲストモード"
@@ -159,7 +158,7 @@ interface MozziState {
   border: string;
   textColor: string;
   level: number;
-  label: string;
+  // label 필드는 TRANSLATIONS에서 가져오도록 변경합니다.
 }
 
 const MOZZI_STATES: Record<number, MozziState> = {
@@ -708,14 +707,16 @@ export default function App() {
                   <span className="text-[10px] font-bold text-gray-500">높음</span>
                 </div>
               </div>
-            )}
+            
             {selectedLocation && (
               <div className="absolute bottom-6 left-4 right-4 bg-white rounded-3xl p-5 shadow-2xl z-[1000] flex items-center justify-between animate-slideUp">
                 <div className="flex items-center space-x-4">
                   <MozziCharacter level={selectedLocation.userScore || 1} className="w-16 h-16" />
                   <div className="text-left">
                     <h4 className="font-black text-gray-800 text-lg">{selectedLocation.name}</h4>
-                    <p className="text-xs font-bold text-green-600">현재 {MOZZI_STATES[Math.round(selectedLocation.userScore || 1)].label}</p>
+                    <p className="text-xs font-bold text-green-600">
+                      현재 {t('mozzis')[Math.max(0, Math.min(4, Math.round(selectedLocation.userScore || 1) - 1))]?.label}
+                    </p>
                   </div>
                 </div>
                 <button 

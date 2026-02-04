@@ -618,35 +618,69 @@ export default function App() {
                   {userReported && <div className="flex items-center space-x-1 text-[10px] font-bold text-green-600"><Check size={12} /> <span>제보 완료!</span></div>}
                 </div>
                 <div className="grid grid-cols-5 gap-2">
-                  {[1, 2, 3, 4, 5].map((score: number) => (
-                    <button key={score} onClick={() => handleRating(score)} disabled={userReported} className={`aspect-square rounded-2xl border-2 transition-all active:scale-95 hover:scale-105 ${MOZZI_STATES[score].border} ${MOZZI_STATES[score].bg} ${userReported ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg cursor-pointer'}`}>
-                      <div className="flex flex-col items-center justify-center h-full p-1"><MozziCharacter level={score} className="w-12 h-12" /><span className={`text-[9px] font-black mt-1 ${MOZZI_STATES[score].textColor}`}>{score}</span></div>
-                    </button>
-                  ))}
+                  {[1, 2, 3, 4, 5].map(score => {
+                    const state = MOZZI_STATES[score];
+                    return (
+                      <button
+                        key={score}
+                        onClick={() => handleRating(score)}
+                        disabled={userReported}
+                        className={`aspect-square rounded-2xl border-2 transition-all active:scale-95 hover:scale-105 ${state.border} ${state.bg} ${userReported ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg cursor-pointer'}`}
+                      >
+                        <div className="flex flex-col items-center justify-center h-full p-1">
+                          <MozziCharacter level={score} className="w-12 h-12" />
+                          <span className={`text-[9px] font-black mt-1 ${state.textColor}`}>{score}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
+              {/* 주차 제보 */}
               <div className="space-y-3">
                 <div className="flex justify-between items-end px-1">
-                  <h3 className="text-sm font-black text-gray-800 tracking-tight flex items-center gap-1"><Car size={14} className="mr-1" /> {t('parkingTitle')}</h3>
-                  {parkingReported && <div className="flex items-center space-x-1 text-[10px] font-bold text-green-600"><Check size={12} /> <span>제보 완료!</span></div>}
+                  <h3 className="text-sm font-black text-gray-800 tracking-tight flex items-center gap-1">
+                    <Car size={14} /> 주차장 상태는?
+                  </h3>
+                  {parkingReported && (
+                    <div className="flex items-center space-x-1 text-[10px] font-bold text-green-600 animate-fadeIn">
+                      <Check size={12} /> <span>제보 완료!</span>
+                    </div>
+                  )}
                 </div>
                 <div className="grid grid-cols-5 gap-2">
-                  {[1, 2, 3, 4, 5].map((score: number) => (
-                    <button key={score} onClick={() => handleParkingRating(score)} disabled={parkingReported} className={`p-3 rounded-2xl border-2 transition-all active:scale-95 hover:scale-105 ${MOZZI_STATES[score].border} ${MOZZI_STATES[score].bg} ${parkingReported ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg cursor-pointer'}`}>
-                      <div className="flex flex-col items-center justify-center space-y-1"><Car size={20} className={PARKING_STATES[score].textColor} /><span className={`text-[9px] font-black ${PARKING_STATES[score].textColor}`}>{score}</span></div>
-                    </button>
-                  ))}
+                  {[1, 2, 3, 4, 5].map(score => {
+                    const parkState = PARKING_STATES[score];
+                    const mozState = MOZZI_STATES[score];
+                    return (
+                      <button
+                        key={score}
+                        onClick={() => handleParkingRating(score)}
+                        disabled={parkingReported}
+                        className={`p-3 rounded-2xl border-2 transition-all active:scale-95 hover:scale-105 ${mozState.border} ${mozState.bg} ${parkingReported ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-lg cursor-pointer'}`}
+                      >
+                        <div className="flex flex-col items-center justify-center space-y-1">
+                          <Car size={20} className={parkState.textColor} />
+                          <span className={`text-[9px] font-black ${parkState.textColor}`}>{score}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-              {authError && <div className="text-center text-xs font-bold text-orange-600 bg-orange-50 border border-orange-200 rounded-2xl py-3 px-4">{authError}</div>}
+
+              {authError && (
+                <div className="text-center text-xs font-bold text-orange-600 bg-orange-50 border border-orange-200 rounded-2xl py-3 px-4">
+                  {authError}
+                </div>
+              )}
             </section>
 
           {/* ✨ 이미지 디자인을 적용한 추천 섹션 */}
             {recommendations.length > 0 && (
               <section className="px-1 mt-6">
                 <div className="bg-[#F0FDF4]/60 rounded-[2.5rem] p-7 border border-[#DCFCE7] relative overflow-hidden">
-                  {/* 상단 타이틀 영역 */}
                   <div className="flex items-center gap-2.5 mb-5">
                     <div className="bg-white w-9 h-9 rounded-full flex items-center justify-center shadow-sm border border-emerald-50">
                       <div className="w-5 h-5 rounded-full border-2 border-[#10B981] flex items-center justify-center text-[10px] font-black text-[#10B981]">i</div>
@@ -654,13 +688,11 @@ export default function App() {
                     <h3 className="text-[17px] font-black text-[#065F46] tracking-tight">모찌 가이드의 추천</h3>
                   </div>
 
-                  {/* 가이드 문구 */}
                   <p className="text-[14px] font-bold text-[#059669] leading-relaxed mb-6 px-1 opacity-90">
                     {selectedLocation?.name}은(는) 지금 아주 쾌적해요! <br/>
                     다른 여유로운 곳도 확인해보세요.
                   </p>
 
-                  {/* 추천 리스트 카드 */}
                   <div className="space-y-3">
                     {recommendations.map(rec => (
                       <button
@@ -669,23 +701,17 @@ export default function App() {
                         className="w-full bg-white rounded-[1.8rem] p-4 flex items-center justify-between group shadow-[0_4px_12px_rgba(0,0,0,0.03)] hover:shadow-md transition-all active:scale-[0.98] border border-white"
                       >
                         <div className="flex items-center gap-4">
-                          {/* 둥근 사각형 모찌 아이콘 배경 */}
                           <div className="bg-[#F8FAFC] rounded-2xl p-2 w-14 h-14 flex items-center justify-center border border-gray-50">
                             <MozziCharacter level={rec.userScore || 1} className="w-10 h-10" />
                           </div>
-                          
                           <div className="text-left">
                             <p className="font-black text-[16px] text-gray-800 tracking-tight">{rec.name}</p>
                             <div className="flex items-center gap-1.5 mt-1">
                               <span className="text-[11px] font-black text-[#10B981]">실시간</span>
-                              <span className="text-[11px] font-bold text-gray-400">
-                                {(rec.userScore || 1).toFixed(1)}점 · {rec.dist || '1.2KM'}
-                              </span>
+                              <span className="text-[11px] font-bold text-gray-400">{(rec.userScore || 1).toFixed(1)}점</span>
                             </div>
                           </div>
                         </div>
-                        
-                        {/* 화살표 아이콘 */}
                         <ChevronRight size={18} className="text-gray-300 group-hover:text-emerald-500 transition-colors mr-1" />
                       </button>
                     ))}
@@ -697,61 +723,89 @@ export default function App() {
         ) : activeTab === 'map' ? (
           <div className="h-full relative">
             <div ref={mapContainerRef} className="w-full h-full" />
-        
-        {/* 유동인구 범례 박스 */}
-              <div className="absolute top-4 left-4 z-[400] bg-white/90 backdrop-blur-md p-3 rounded-2xl shadow-xl border border-white/20">
-                <p className="text-[10px] font-black text-gray-400 mb-2 uppercase tracking-wider">유동인구 분포</p>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-gray-500">낮음</span>
-                  <div className="w-24 h-2 rounded-full bg-gradient-to-r from-[#FEF3C7] via-[#F59E0B] to-[#EF4444]" />
-                  <span className="text-[10px] font-bold text-gray-500">높음</span>
-                </div>
+            <div className="absolute top-4 left-4 z-[400] bg-white/90 backdrop-blur-md p-3 rounded-2xl shadow-xl border border-white/20">
+              <p className="text-[10px] font-black text-gray-400 mb-2 uppercase tracking-wider">유동인구 분포</p>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-gray-500">낮음</span>
+                <div className="w-24 h-2 rounded-full bg-gradient-to-r from-[#D1FAE5] via-[#FDE047] to-[#EF4444]" />
+                <span className="text-[10px] font-bold text-gray-500">높음</span>
               </div>
-            
+            </div>
             {selectedLocation && (
-              <div className="absolute bottom-6 left-4 right-4 bg-white rounded-3xl p-5 shadow-2xl z-[1000] flex items-center justify-between animate-slideUp">
+              <div className="absolute bottom-28 left-4 right-4 bg-white rounded-[2rem] p-5 shadow-2xl z-[1000] flex items-center justify-between border border-gray-100 animate-slideUp">
                 <div className="flex items-center space-x-4">
-                  <MozziCharacter level={selectedLocation.userScore || 1} className="w-16 h-16" />
+                  <div className="bg-gray-50 p-2 rounded-2xl">
+                    <MozziCharacter level={selectedLocation.userScore || 1} className="w-14 h-14" />
+                  </div>
                   <div className="text-left">
-                    <h4 className="font-black text-gray-800 text-lg">{selectedLocation.name}</h4>
+                    <h4 className="font-black text-gray-800 text-lg tracking-tight">{selectedLocation.name}</h4>
                     <p className="text-xs font-bold text-green-600">
-                      현재 {t('mozzis')[Math.max(0, Math.min(4, Math.round(selectedLocation.userScore || 1) - 1))]?.label}
+                      현재 {t('mozzis')[Math.round(selectedLocation.userScore || 1) - 1]?.label}
                     </p>
                   </div>
                 </div>
                 <button 
-                  onClick={() => setActiveTab('home')} // 홈 탭으로 가서 상세 제보하기
-                  className="bg-gray-100 p-3 rounded-2xl hover:bg-green-50 transition-colors"
+                  onClick={() => setActiveTab('home')} 
+                  className="bg-green-50 p-3 rounded-2xl text-green-600 hover:bg-green-100 transition-colors"
                 >
-                  <ChevronRight size={20} className="text-gray-400" />
+                  <ChevronRight size={20} strokeWidth={3} />
                 </button>
-               </div>
+              </div>
             )}
           </div>
         ) : activeTab === 'add' ? (
-          <div className="h-full overflow-y-auto p-6 bg-white">
-            <h2 className="text-xl font-black text-gray-800 mb-6">새 장소 추가하기</h2>
-            <form onSubmit={handleAddPlace} className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">장소 이름</label>
-                <input
-                  type="text"
-                  value={newPlace.name}
-                  onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-4 text-sm outline-none"
-                  placeholder="예: 성산 일출봉"
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={isAdding}
-                className="w-full bg-green-600 text-white font-black py-4 rounded-2xl active:scale-95 transition-all disabled:opacity-50"
-              >
-                {isAdding ? '등록 중...' : '장소 등록하기'}
-              </button>
-            </form>
-          </div>
+            <div className="h-full overflow-y-auto p-6 bg-white pb-32">
+              <h2 className="text-xl font-black text-gray-800 mb-6">새 장소 추가하기</h2>
+              <form onSubmit={handleAddPlace} className="space-y-6">
+      {/* 1. 장소 이름 입력창 */}
+                <div>
+                  <label className="block text-xs font-black text-gray-400 uppercase mb-2 tracking-widest">장소 이름</label>
+                  <input
+                    type="text"
+                    value={newPlace.name}
+                    onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })}
+                    className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                    placeholder="예: 성산 일출봉"
+                    required
+                  />
+                </div>
+
+      {/* 2. 주소 검색 버튼 (UI 추가 지점) */}
+                <div className="space-y-4">
+                  <label className="block text-xs font-black text-gray-400 uppercase mb-2 tracking-widest">위치 정보</label>
+                  <button 
+                    type="button"
+                    onClick={handleSearchAddress}
+                    className="w-full bg-emerald-600 text-white font-black py-4 rounded-2xl shadow-lg shadow-emerald-600/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Search size={18} strokeWidth={3} /> 주소 검색으로 위치 찾기
+                  </button>
+
+        {/* 3. 위도/경도 표시 카드 (UI 추가 지점) */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-tighter block mb-1">위도(LAT)</label>
+                      <p className="text-sm font-black text-gray-700">{newPlace.lat || '0.0000'}</p>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-tighter block mb-1">경도(LNG)</label>
+                      <p className="text-sm font-black text-gray-700">{newPlace.lng || '0.0000'}</p>
+                    </div>
+                  </div>
+                  {newPlace.lat && (
+                    <p className="text-[10px] text-green-600 font-bold px-1 italic">✅ 위치 정보가 성공적으로 입력되었습니다.</p>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isAdding || !newPlace.lat}
+                  className="w-full bg-green-600 text-white font-black py-5 rounded-[2rem] shadow-xl shadow-green-600/20 active:scale-95 transition-all disabled:opacity-30 disabled:grayscale"
+                >
+                  {isAdding ? '모찌 로딩 중...' : '장소 등록하기'}
+                </button>
+              </form>
+            </div>
         ) : null}
 
         {/* 하단 네비게이션 바 */}

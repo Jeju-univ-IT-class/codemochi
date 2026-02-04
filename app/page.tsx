@@ -759,24 +759,30 @@ export default function App() {
               </div>
             </div>
             {selectedLocation && (
-              <div className="absolute bottom-28 left-4 right-4 bg-white rounded-[2rem] p-5 shadow-2xl z-[400] flex items-center justify-between border border-gray-100 animate-slideUp">
-                <div className="flex items-center space-x-4">
-                  <div className="bg-gray-50 p-2 rounded-2xl">
-                    <MozziCharacter level={selectedLocation.userScore || 1} className="w-14 h-14" />
+              <div className="absolute bottom-24 left-0 right-0 px-4 z-[400] animate-slideUp">
+                <div className="bg-white/95 backdrop-blur-sm rounded-[2rem] p-4 shadow-[0_10px_40px_rgba(0,0,0,0.1)] flex items-center justify-between border border-white/20 max-w-sm mx-auto">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-gray-50 p-2 rounded-2xl shrink-0">
+                      <MozziCharacter level={selectedLocation.userScore || 1} className="w-10 h-10" />
+                    </div>
+                    <div className="text-left min-w-0">
+                      <h4 className="font-black text-gray-800 text-sm tracking-tight truncate">
+                        {selectedLocation.name}
+                      </h4>
+                      <p className="text-[10px] font-bold text-green-600">
+                        현재 {t('mozzis')[Math.round(selectedLocation.userScore || 1) - 1]?.label}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-left">
-                    <h4 className="font-black text-gray-800 text-lg tracking-tight">{selectedLocation.name}</h4>
-                    <p className="text-xs font-bold text-green-600">
-                      현재 {t('mozzis')[Math.round(selectedLocation.userScore || 1) - 1]?.label}
-                    </p>
-                  </div>
+                  
+                  {/* 상세 페이지로 이동 버튼 */}
+                  <button 
+                    onClick={() => setActiveTab('home')} 
+                    className="bg-green-600 w-10 h-10 rounded-2xl text-white flex items-center justify-center hover:bg-green-700 transition-all active:scale-90 shrink-0 shadow-lg shadow-green-600/20"
+                  >
+                    <ChevronRight size={18} strokeWidth={3} />
+                  </button>
                 </div>
-                <button 
-                  onClick={() => setActiveTab('home')} 
-                  className="bg-green-50 p-3 rounded-2xl text-green-600 hover:bg-green-100 transition-colors"
-                >
-                  <ChevronRight size={20} strokeWidth={3} />
-                </button>
               </div>
             )}
           </div>
@@ -833,8 +839,8 @@ export default function App() {
         ) : null}
 
         {/* 하단 네비게이션 바 */}
-        <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-100 px-8 py-4 z-[500]">
-          <div className="max-w-md mx-auto flex justify-between items-center">
+        <nav className="fixed bottom-0 left-0 right-0 z-[500] bg-white border-t border-gray-100 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]"> 
+          <div className="max-w-md mx-auto flex justify-between items-center px-8 py-4">
             <button
               onClick={() => setActiveTab('home')}
               className={`flex flex-col items-center space-y-1 transition-all ${activeTab === 'home' ? 'text-green-600 scale-110' : 'text-gray-300'}`}
@@ -842,6 +848,7 @@ export default function App() {
               <Wind size={24} strokeWidth={activeTab === 'home' ? 3 : 2} />
               <span className="text-[10px] font-black uppercase tracking-widest">Check</span>
             </button>
+            
             <button
               onClick={() => setActiveTab('map')}
               className={`flex flex-col items-center space-y-1 transition-all ${activeTab === 'map' ? 'text-green-600 scale-110' : 'text-gray-300'}`}
@@ -849,6 +856,7 @@ export default function App() {
               <MapIcon size={24} strokeWidth={activeTab === 'map' ? 3 : 2} />
               <span className="text-[10px] font-black uppercase tracking-widest">Map</span>
             </button>
+            
             <button
               onClick={() => setActiveTab('add')}
               className={`flex flex-col items-center space-y-1 transition-all ${activeTab === 'add' ? 'text-green-600 scale-110' : 'text-gray-300'}`}

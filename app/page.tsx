@@ -814,8 +814,26 @@ const fetchLocationsAndReports = async () => {
                   <span className="text-[10px] font-bold text-gray-500">높음</span>
                 </div>
               </div>
-            </div>
-          ) : activeTab === 'add' ? (
+            )}
+            {selectedLocation && (
+              <div className="absolute bottom-6 left-4 right-4 bg-white rounded-3xl p-5 shadow-2xl z-[1000] flex items-center justify-between animate-slideUp">
+                <div className="flex items-center space-x-4">
+                  <MozziCharacter level={selectedLocation.userScore || 1} className="w-16 h-16" />
+                  <div className="text-left">
+                    <h4 className="font-black text-gray-800 text-lg">{selectedLocation.name}</h4>
+                    <p className="text-xs font-bold text-green-600">현재 {MOZZI_STATES[Math.round(selectedLocation.userScore || 1)].label}</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setActiveTab('home')} // 홈 탭으로 가서 상세 제보하기
+                  className="bg-gray-100 p-3 rounded-2xl hover:bg-green-50 transition-colors"
+                >
+                  <ChevronRight size={20} className="text-gray-400" />
+                </button>
+               </div>
+            )}
+          </div>
+        ) : activeTab === 'add' ? (
           <div className="h-full overflow-y-auto p-6 bg-white">
             <h2 className="text-xl font-black text-gray-800 mb-6">새 장소 추가하기</h2>
             <form onSubmit={handleAddPlace} className="space-y-4">

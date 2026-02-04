@@ -759,7 +759,7 @@ export default function App() {
               </div>
             </div>
             {selectedLocation && (
-              <div className="absolute bottom-28 left-4 right-4 bg-white rounded-[2rem] p-5 shadow-2xl z-[1000] flex items-center justify-between border border-gray-100 animate-slideUp">
+              <div className="absolute bottom-28 left-4 right-4 bg-white rounded-[2rem] p-5 shadow-2xl z-[400] flex items-center justify-between border border-gray-100 animate-slideUp">
                 <div className="flex items-center space-x-4">
                   <div className="bg-gray-50 p-2 rounded-2xl">
                     <MozziCharacter level={selectedLocation.userScore || 1} className="w-14 h-14" />

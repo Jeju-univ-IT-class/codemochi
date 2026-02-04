@@ -708,7 +708,7 @@ export default function App() {
                             <p className="font-black text-[16px] text-gray-800 tracking-tight">{rec.name}</p>
                             <div className="flex items-center gap-1.5 mt-1">
                               <span className="text-[11px] font-black text-[#10B981]">실시간</span>
-                              <span className="text-[11px] font-bold text-gray-400">{(rec.userScore || 1).toFixed(1)}점 · {rec.dist || '1.2KM'}</span>
+                              <span className="text-[11px] font-bold text-gray-400">{(rec.userScore || 1).toFixed(1)}점</span>
                             </div>
                           </div>
                         </div>
@@ -723,18 +723,37 @@ export default function App() {
         ) : activeTab === 'map' ? (
           <div className="h-full relative">
             <div ref={mapContainerRef} className="w-full h-full" />
-        
-        {/* 유동인구 범례 박스 */}
-              <div className="absolute top-4 left-4 z-[400] bg-white/90 backdrop-blur-md p-3 rounded-2xl shadow-xl border border-white/20">
-                <p className="text-[10px] font-black text-gray-400 mb-2 uppercase tracking-wider">유동인구 분포</p>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-gray-500">낮음</span>
-                  <div className="w-24 h-2 rounded-full bg-gradient-to-r from-[#FEF3C7] via-[#F59E0B] to-[#EF4444]" />
-                  <span className="text-[10px] font-bold text-gray-500">높음</span>
-                </div>
+            <div className="absolute top-4 left-4 z-[400] bg-white/90 backdrop-blur-md p-3 rounded-2xl shadow-xl border border-white/20">
+              <p className="text-[10px] font-black text-gray-400 mb-2 uppercase tracking-wider">유동인구 분포</p>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-gray-500">낮음</span>
+                <div className="w-24 h-2 rounded-full bg-gradient-to-r from-[#D1FAE5] via-[#FDE047] to-[#EF4444]" />
+                <span className="text-[10px] font-bold text-gray-500">높음</span>
               </div>
             </div>
-          ) : activeTab === 'add' ? (
+            {selectedLocation && (
+              <div className="absolute bottom-28 left-4 right-4 bg-white rounded-[2rem] p-5 shadow-2xl z-[1000] flex items-center justify-between border border-gray-100 animate-slideUp">
+                <div className="flex items-center space-x-4">
+                  <div className="bg-gray-50 p-2 rounded-2xl">
+                    <MozziCharacter level={selectedLocation.userScore || 1} className="w-14 h-14" />
+                  </div>
+                  <div className="text-left">
+                    <h4 className="font-black text-gray-800 text-lg tracking-tight">{selectedLocation.name}</h4>
+                    <p className="text-xs font-bold text-green-600">
+                      현재 {t('mozzis')[Math.round(selectedLocation.userScore || 1) - 1]?.label}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setActiveTab('home')} 
+                  className="bg-green-50 p-3 rounded-2xl text-green-600 hover:bg-green-100 transition-colors"
+                >
+                  <ChevronRight size={20} strokeWidth={3} />
+                </button>
+              </div>
+            )}
+          </div>
+        ) : activeTab === 'add' ? (
             <div className="h-full overflow-y-auto p-6 bg-white pb-32">
               <h2 className="text-xl font-black text-gray-800 mb-6">새 장소 추가하기</h2>
               <form onSubmit={handleAddPlace} className="space-y-6">

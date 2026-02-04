@@ -1,9 +1,16 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Search, MapPin, Star, Navigation, Map as MapIcon, ChevronRight, LogOut, PlusCircle, Check, Car } from 'lucide-react';
+import { Search, MapPin, Star, Navigation, Wind, Map as MapIcon, ChevronRight, LogOut, PlusCircle, Check, Car } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
+import { init } from 'next/dist/compiled/webpack/webpack';
+declare global {
+  interface Window {
+    daum: any;
+    kakao: any;
+  }
+}
 
 const supabase = createClient();
 
@@ -207,6 +214,7 @@ export default function App() {
   const [newPlace, setNewPlace] = useState({ name: '', lat: '', lng: '' });
   const [isAdding, setIsAdding] = useState(false);
   const [isAnonymous, setIsAnonymous] = useState(true);
+  const [isKakaoLoaded, setIsKakaoLoaded] = useState(false); //
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
@@ -511,7 +519,6 @@ export default function App() {
             </form>
           </div>
         ) : null}
-      </div>
 
       <nav className="bg-white border-t border-gray-100 shrink-0 shadow-2xl z-50">
         <div className="flex justify-around items-center py-3">

@@ -1,4 +1,5 @@
 'use client';
+//진짜짜코드
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, MapPin, Star, Navigation, Wind, Map as MapIcon, ChevronRight, LogOut, PlusCircle, Check, Car } from 'lucide-react';
@@ -814,7 +815,7 @@ const fetchLocationsAndReports = async () => {
                   <span className="text-[10px] font-bold text-gray-500">높음</span>
                 </div>
               </div>
-            )}
+            
             {selectedLocation && (
               <div className="absolute bottom-6 left-4 right-4 bg-white rounded-3xl p-5 shadow-2xl z-[1000] flex items-center justify-between animate-slideUp">
                 <div className="flex items-center space-x-4">

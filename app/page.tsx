@@ -263,6 +263,31 @@ export default function App() {
     });
     setLocations(locsWithScores);
   };
+  useEffect(() => {
+    if (navigator.geolocation && locations.length > 0) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        const { latitude, longitude } = position.coords;
+        
+        // 내 위치에서 가장 가까운 장소 찾기 로직
+        let closest = locations[0];
+        let minDistance = Infinity;
+
+        locations.forEach(loc => {
+          // 하버사인 공식 등으로 거리 계산 (간단한 버전)
+          const d = Math.sqrt(
+            Math.pow(loc.latitude - latitude, 2) + 
+            Math.pow(loc.longitude - longitude, 2)
+          );
+          if (d < minDistance) {
+            minDistance = d;
+            closest = loc;
+          }
+        });
+
+        setSelectedId(closest.id); // 가장 가까운 곳의 ID로 변경!
+      });
+    }
+  }, [locations]);
 
   // 인증 초기화
   useEffect(() => {

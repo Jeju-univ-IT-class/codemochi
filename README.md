@@ -1,3 +1,5 @@
+release 2026/02/05 14:18
+
 # Mozzi character component
 
 *Automatically synced with your [v0.app](https://v0.app) deployments*
